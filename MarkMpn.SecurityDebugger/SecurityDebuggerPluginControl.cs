@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Data;
 using System.Drawing;
 using System.Linq;
+using System.ServiceModel;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -38,6 +39,8 @@ namespace MarkMpn.SecurityDebugger
         {
             noMatchPanel.Visible = true;
             recordPermissionsPanel.Visible = false;
+            errorPanel.Visible = false;
+            retryLabel.Visible = false;
 
             scintilla1.StartStyling(0);
             scintilla1.SetStyling(scintilla1.TextLength, 0);
@@ -80,142 +83,210 @@ namespace MarkMpn.SecurityDebugger
                 {
                     foreach (Group group in match.Groups)
                     {
-                        if (group.Name == "0")
+                        if (Int32.TryParse(group.Name, out _))
                             continue;
 
                         scintilla1.StartStyling(group.Index);
                         scintilla1.SetStyling(group.Length, 1);
                     }
 
-                    var principal = ExtractPrincipal(match, out var principalTypeDisplayName);
-                    var target = ExtractTarget(match, out var targetTypeDisplayName);
-                    var privilege = ExtractPrivilege(match, target);
-                    var privilegeDepth = ExtractPrivilegeDepth(match, principal, target);
-
-                    var userPrefix = $"The {principalTypeDisplayName} ";
-                    var userName = principal.Name;
-                    userLinkLabel.Text = userPrefix + userName;
-                    userLinkLabel.LinkArea = new LinkArea(userPrefix.Length, userName.Length);
-
-                    if (privilege.GetAttributeValue<int>("accessright") == 0)
-                        missingPrivilegeLinkLabel.Text = $"does not have {privilege.GetAttributeValue<string>("name")} permission";
-                    else
-                        missingPrivilegeLinkLabel.Text = $"does not have {((AccessRights)privilege.GetAttributeValue<int>("accessright")).ToString().Replace("Rights", "")} permission";
-
-                    var prefix = $"on the {targetTypeDisplayName} ";
-                    string link;
-
-                    var targetReference = target as EntityReference;
-                    if (targetReference != null)
-                        link = targetReference.Name;
-                    else
-                        link = ((EntityMetadata)target).DisplayName.UserLocalizedLabel.Label;
-
-                    targetLinkLabel.Text = prefix + link;
-                    targetLinkLabel.LinkArea = new LinkArea(prefix.Length, link.Length);
-
-                    // Check permission is available at the minimum calculated depth. If not, increase the depth
-                    // to the next available value.
-                    var privilegeRef = privilege.ToEntityReference();
-                    privilegeRef.Name = privilege.GetAttributeValue<string>("name");
-
-                    if (privilegeDepth == PrivilegeDepth.Basic && !privilege.GetAttributeValue<bool>("canbebasic"))
-                        privilegeDepth = PrivilegeDepth.Local;
-
-                    if (privilegeDepth == PrivilegeDepth.Local && !privilege.GetAttributeValue<bool>("canbelocal"))
-                        privilegeDepth = PrivilegeDepth.Deep;
-
-                    if (privilegeDepth == PrivilegeDepth.Deep && !privilege.GetAttributeValue<bool>("canbedeep"))
-                        privilegeDepth = PrivilegeDepth.Global;
-
-                    requiredPrivilegeLabel.Text = $"To resolve this error, the user needs to be granted the {privilegeRef.Name} privilege to {privilegeDepth} depth";
-
-                    var resolutions = new List<Resolution>();
-
-                    // Find roles that include the required permission and suggest to add them to the user
-                    var sufficientRoleQry = new FetchExpression($@"
-                        <fetch xmlns:generator='MarkMpn.SQL4CDS'>
-                          <entity name='role'>
-                            <attribute name='name' />
-                            <link-entity name='roleprivileges' to='roleid' from='roleid' alias='rp' link-type='inner' />
-                            <filter>
-                              <condition attribute='privilegeid' entityname='rp' operator='eq' value='{privilege.Id}' />
-                              <condition attribute='privilegedepthmask' entityname='rp' operator='ge' value='{(int)privilegeDepth}' />
-                            </filter>
-                            <order attribute='name' />
-                          </entity>
-                        </fetch>");
-                    var sufficientRoles = Service.RetrieveMultiple(sufficientRoleQry);
-
-                    foreach (var role in sufficientRoles.Entities)
+                    WorkAsync(new WorkAsyncInfo
                     {
-                        var roleRef = role.ToEntityReference();
-                        roleRef.Name = role.GetAttributeValue<string>("name");
-
-                        var addRole = new AddSecurityRole
+                        Message = "Extracting Details...",
+                        Work = (bw, args) =>
                         {
-                            UserReference = principal,
-                            RoleReference = roleRef
-                        };
+                            try
+                            {
+                                // Extract the details from the error message
+                                var principal = ExtractPrincipal(match, out var principalTypeDisplayName);
+                                var target = ExtractTarget(match, out var targetTypeDisplayName);
+                                var privilege = ExtractPrivilege(match, target);
+                                var privilegeDepth = ExtractPrivilegeDepth(match, principal, target);
 
-                        resolutions.Add(addRole);
-                    }
+                                var accessRights = (AccessRights)privilege.GetAttributeValue<int>("accessright");
+                                var targetReference = target as EntityReference;
+                                var privilegeRef = privilege.ToEntityReference();
+                                privilegeRef.Name = privilege.GetAttributeValue<string>("name");
 
-                    // Find roles currently assigned to the user and suggest them to be edited to include the required permission
-                    var existingRoleQry = new FetchExpression(@"
-                        <fetch xmlns:generator='MarkMpn.SQL4CDS'>
-                          <entity name='role'>
-                            <attribute name='name' />
-                            <link-entity name='systemuserroles' to='roleid' from='roleid' alias='sur' link-type='inner' />
-                            <filter>
-                              <condition attribute='systemuserid' entityname='sur' operator='eq-userid' />
-                            </filter>
-                            <order attribute='name' />
-                          </entity>
-                        </fetch>");
-                    var existingRoles = Service.RetrieveMultiple(existingRoleQry);
+                                // Check if the problem should still exist
+                                try
+                                {
+                                    if (targetReference != null && accessRights != AccessRights.None)
+                                    {
+                                        var recordAccess = (RetrievePrincipalAccessResponse)Service.Execute(new RetrievePrincipalAccessRequest
+                                        {
+                                            Principal = principal,
+                                            Target = targetReference
+                                        });
 
-                    foreach (var role in existingRoles.Entities)
-                    {
-                        var roleRef = role.ToEntityReference();
-                        roleRef.Name = role.GetAttributeValue<string>("name");
+                                        if ((recordAccess.AccessRights & accessRights) == accessRights)
+                                            InvokeIfRequired(() => retryLabel.Visible = true);
+                                    }
+                                    else
+                                    {
+                                        var priv = (RetrieveUserPrivilegeByPrivilegeIdResponse)Service.Execute(new RetrieveUserPrivilegeByPrivilegeIdRequest
+                                        {
+                                            UserId = principal.Id,
+                                            PrivilegeId = privilege.Id
+                                        });
 
-                        var editRole = new EditSecurityRole
-                        {
-                            RoleReference = roleRef,
-                            PrivilegeReference = privilegeRef,
-                            Depth = privilegeDepth
-                        };
+                                        if (priv.RolePrivileges.Any())
+                                            InvokeIfRequired(() => retryLabel.Visible = true);
+                                    }
+                                }
+                                catch (FaultException<OrganizationServiceFault>)
+                                {
+                                    // In case the service doesn't support the RetrieveUserPrivilegeByPrivilegeId message
+                                }
 
-                        resolutions.Add(editRole);
-                    }
+                                // Display the problem details
+                                InvokeIfRequired(() =>
+                                {
+                                    var userPrefix = $"The {principalTypeDisplayName} ";
+                                    var userName = principal.Name;
+                                    userLinkLabel.Text = userPrefix + userName;
+                                    userLinkLabel.LinkArea = new LinkArea(userPrefix.Length, userName.Length);
 
-                    if (targetReference != null)
-                    {
-                        // Suggest sharing the record with the required permission
-                        var sharing = new ShareRecord
-                        {
-                            UserReference = principal,
-                            TargetReference = targetReference,
-                            AccessRights = (AccessRights)privilege.GetAttributeValue<int>("accessright")
-                        };
+                                    if (accessRights == AccessRights.None)
+                                        missingPrivilegeLinkLabel.Text = $"does not have {privilege.GetAttributeValue<string>("name")} permission";
+                                    else
+                                        missingPrivilegeLinkLabel.Text = $"does not have {accessRights.ToString().Replace("Access", "")} permission";
 
-                        resolutions.Add(sharing);
-                    }
+                                    var prefix = $"on the {targetTypeDisplayName} ";
+                                    string link;
 
-                    resolutionsListView.Items.Clear();
+                                    if (targetReference != null)
+                                        link = targetReference.Name;
+                                    else
+                                        link = ((EntityMetadata)target).DisplayName.UserLocalizedLabel.Label;
 
-                    foreach (var resolution in resolutions)
-                    {
-                        var lvi = resolutionsListView.Items.Add(resolution.ToString());
-                        lvi.ImageIndex = resolution.ImageIndex;
-                        lvi.Tag = resolution;
-                    }
+                                    targetLinkLabel.Text = prefix + link;
+                                    targetLinkLabel.LinkArea = new LinkArea(prefix.Length, link.Length);
 
-                    noMatchPanel.Visible = false;
-                    recordPermissionsPanel.Visible = true;
+                                    // Check permission is available at the minimum calculated depth. If not, increase the depth
+                                    // to the next available value.
+                                    if (privilegeDepth == PrivilegeDepth.Basic && !privilege.GetAttributeValue<bool>("canbebasic"))
+                                        privilegeDepth = PrivilegeDepth.Local;
+
+                                    if (privilegeDepth == PrivilegeDepth.Local && !privilege.GetAttributeValue<bool>("canbelocal"))
+                                        privilegeDepth = PrivilegeDepth.Deep;
+
+                                    if (privilegeDepth == PrivilegeDepth.Deep && !privilege.GetAttributeValue<bool>("canbedeep"))
+                                        privilegeDepth = PrivilegeDepth.Global;
+
+                                    requiredPrivilegeLabel.Text = $"To resolve this error, the user needs to be granted the {privilegeRef.Name} privilege to {privilegeDepth} depth";
+                                });
+
+                                var resolutions = new List<Resolution>();
+
+                                // Find roles that include the required permission and suggest to add them to the user
+                                var sufficientRoleQry = new FetchExpression($@"
+                                    <fetch xmlns:generator='MarkMpn.SQL4CDS'>
+                                        <entity name='role'>
+                                        <attribute name='name' />
+                                        <link-entity name='roleprivileges' to='roleid' from='roleid' alias='rp' link-type='inner' />
+                                        <filter>
+                                            <condition attribute='privilegeid' entityname='rp' operator='eq' value='{privilege.Id}' />
+                                            <condition attribute='privilegedepthmask' entityname='rp' operator='ge' value='{(int)privilegeDepth}' />
+                                        </filter>
+                                        <order attribute='name' />
+                                        </entity>
+                                    </fetch>");
+                                var sufficientRoles = Service.RetrieveMultiple(sufficientRoleQry);
+
+                                foreach (var role in sufficientRoles.Entities)
+                                {
+                                    var roleRef = role.ToEntityReference();
+                                    roleRef.Name = role.GetAttributeValue<string>("name");
+
+                                    var addRole = new AddSecurityRole
+                                    {
+                                        UserReference = principal,
+                                        RoleReference = roleRef
+                                    };
+
+                                    resolutions.Add(addRole);
+                                }
+
+                                // Find roles currently assigned to the user and suggest them to be edited to include the required permission
+                                var existingRoleQry = new FetchExpression(@"
+                                    <fetch xmlns:generator='MarkMpn.SQL4CDS'>
+                                        <entity name='role'>
+                                        <attribute name='name' />
+                                        <link-entity name='systemuserroles' to='roleid' from='roleid' alias='sur' link-type='inner' />
+                                        <filter>
+                                            <condition attribute='systemuserid' entityname='sur' operator='eq-userid' />
+                                        </filter>
+                                        <order attribute='name' />
+                                        </entity>
+                                    </fetch>");
+                                var existingRoles = Service.RetrieveMultiple(existingRoleQry);
+
+                                foreach (var role in existingRoles.Entities)
+                                {
+                                    var roleRef = role.ToEntityReference();
+                                    roleRef.Name = role.GetAttributeValue<string>("name");
+
+                                    var editRole = new EditSecurityRole
+                                    {
+                                        RoleReference = roleRef,
+                                        PrivilegeReference = privilegeRef,
+                                        Depth = privilegeDepth
+                                    };
+
+                                    resolutions.Add(editRole);
+                                }
+
+                                if (targetReference != null)
+                                {
+                                    // Suggest sharing the record with the required permission
+                                    var sharing = new ShareRecord
+                                    {
+                                        UserReference = principal,
+                                        TargetReference = targetReference,
+                                        AccessRights = accessRights
+                                    };
+
+                                    resolutions.Add(sharing);
+                                }
+
+                                InvokeIfRequired(() =>
+                                {
+                                    resolutionsListView.Items.Clear();
+
+                                    foreach (var resolution in resolutions)
+                                    {
+                                        var lvi = resolutionsListView.Items.Add(resolution.ToString());
+                                        lvi.ImageIndex = resolution.ImageIndex;
+                                        lvi.Tag = resolution;
+                                    }
+
+                                    noMatchPanel.Visible = false;
+                                    recordPermissionsPanel.Visible = true;
+                                });
+                            }
+                            catch (Exception ex)
+                            {
+                                InvokeIfRequired(() =>
+                                {
+                                    errorLabel.Text = ex.Message;
+
+                                    noMatchPanel.Visible = false;
+                                    errorPanel.Visible = true;
+                                });
+                            }
+                        }
+                    });
                 }
             }
+        }
+
+        private void InvokeIfRequired(Action action)
+        {
+            if (InvokeRequired)
+                Invoke(action);
+            else
+                action();
         }
 
         private PrivilegeDepth ExtractPrivilegeDepth(Match match, EntityReference principal, object target)
@@ -265,7 +336,7 @@ namespace MarkMpn.SecurityDebugger
             {
                 var privQry = new QueryByAttribute("privilege");
                 privQry.AddAttributeValue("name", match.Groups["privilegename"].Value);
-                privQry.ColumnSet = new ColumnSet("name", "accessrights", "canbebasic", "canbelocal", "canbedeep", "canbeglobal");
+                privQry.ColumnSet = new ColumnSet("name", "accessright", "canbebasic", "canbelocal", "canbedeep", "canbeglobal");
                 return Service.RetrieveMultiple(privQry).Entities.Single();
             }
 
@@ -552,6 +623,21 @@ namespace MarkMpn.SecurityDebugger
         private void resolutionsListView_SelectedIndexChanged(object sender, EventArgs e)
         {
             executeButton.Enabled = resolutionsListView.SelectedItems.Count == 1;
+        }
+
+        private void executeButton_Click(object sender, EventArgs e)
+        {
+            var resolution = (Resolution)resolutionsListView.SelectedItems[0].Tag;
+
+            WorkAsync(new WorkAsyncInfo
+            {
+                Message = "Applying Fix...",
+                Work = (bw, args) =>
+                {
+                    resolution.Execute(Service);
+                },
+                PostWorkCallBack = result => ParseError()
+            });
         }
     }
 }

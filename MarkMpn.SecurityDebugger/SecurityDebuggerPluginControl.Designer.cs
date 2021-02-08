@@ -33,24 +33,28 @@ namespace MarkMpn.SecurityDebugger
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.scintilla1 = new ScintillaNET.Scintilla();
             this.recordPermissionsPanel = new System.Windows.Forms.Panel();
+            this.resolutionsListView = new System.Windows.Forms.ListView();
+            this.columnHeader1 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.panel1 = new System.Windows.Forms.Panel();
+            this.executeButton = new System.Windows.Forms.Button();
+            this.label1 = new System.Windows.Forms.Label();
+            this.retryLabel = new System.Windows.Forms.Label();
+            this.requiredPrivilegeLabel = new System.Windows.Forms.Label();
             this.targetLinkLabel = new System.Windows.Forms.LinkLabel();
             this.missingPrivilegeLinkLabel = new System.Windows.Forms.LinkLabel();
             this.userLinkLabel = new System.Windows.Forms.LinkLabel();
             this.noMatchPanel = new System.Windows.Forms.Panel();
             this.linkLabel1 = new System.Windows.Forms.LinkLabel();
-            this.requiredPrivilegeLabel = new System.Windows.Forms.Label();
-            this.label1 = new System.Windows.Forms.Label();
-            this.executeButton = new System.Windows.Forms.Button();
-            this.panel1 = new System.Windows.Forms.Panel();
-            this.resolutionsListView = new System.Windows.Forms.ListView();
-            this.columnHeader1 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.errorPanel = new System.Windows.Forms.Panel();
+            this.errorLabel = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
             this.splitContainer1.SuspendLayout();
             this.recordPermissionsPanel.SuspendLayout();
-            this.noMatchPanel.SuspendLayout();
             this.panel1.SuspendLayout();
+            this.noMatchPanel.SuspendLayout();
+            this.errorPanel.SuspendLayout();
             this.SuspendLayout();
             // 
             // splitContainer1
@@ -67,6 +71,7 @@ namespace MarkMpn.SecurityDebugger
             // 
             this.splitContainer1.Panel2.Controls.Add(this.recordPermissionsPanel);
             this.splitContainer1.Panel2.Controls.Add(this.noMatchPanel);
+            this.splitContainer1.Panel2.Controls.Add(this.errorPanel);
             this.splitContainer1.Size = new System.Drawing.Size(857, 689);
             this.splitContainer1.SplitterDistance = 413;
             this.splitContainer1.TabIndex = 0;
@@ -88,17 +93,89 @@ namespace MarkMpn.SecurityDebugger
             this.recordPermissionsPanel.Controls.Add(this.resolutionsListView);
             this.recordPermissionsPanel.Controls.Add(this.panel1);
             this.recordPermissionsPanel.Controls.Add(this.label1);
+            this.recordPermissionsPanel.Controls.Add(this.retryLabel);
             this.recordPermissionsPanel.Controls.Add(this.requiredPrivilegeLabel);
             this.recordPermissionsPanel.Controls.Add(this.targetLinkLabel);
             this.recordPermissionsPanel.Controls.Add(this.missingPrivilegeLinkLabel);
             this.recordPermissionsPanel.Controls.Add(this.userLinkLabel);
             this.recordPermissionsPanel.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.recordPermissionsPanel.Location = new System.Drawing.Point(0, 49);
+            this.recordPermissionsPanel.Location = new System.Drawing.Point(0, 149);
             this.recordPermissionsPanel.Name = "recordPermissionsPanel";
             this.recordPermissionsPanel.Padding = new System.Windows.Forms.Padding(4);
-            this.recordPermissionsPanel.Size = new System.Drawing.Size(440, 640);
+            this.recordPermissionsPanel.Size = new System.Drawing.Size(440, 540);
             this.recordPermissionsPanel.TabIndex = 1;
             this.recordPermissionsPanel.Visible = false;
+            // 
+            // resolutionsListView
+            // 
+            this.resolutionsListView.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
+            this.columnHeader1});
+            this.resolutionsListView.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.resolutionsListView.FullRowSelect = true;
+            this.resolutionsListView.HideSelection = false;
+            this.resolutionsListView.Location = new System.Drawing.Point(4, 168);
+            this.resolutionsListView.Name = "resolutionsListView";
+            this.resolutionsListView.Size = new System.Drawing.Size(432, 339);
+            this.resolutionsListView.TabIndex = 7;
+            this.resolutionsListView.UseCompatibleStateImageBehavior = false;
+            this.resolutionsListView.View = System.Windows.Forms.View.Details;
+            this.resolutionsListView.SelectedIndexChanged += new System.EventHandler(this.resolutionsListView_SelectedIndexChanged);
+            // 
+            // columnHeader1
+            // 
+            this.columnHeader1.Text = "Description";
+            this.columnHeader1.Width = 200;
+            // 
+            // panel1
+            // 
+            this.panel1.Controls.Add(this.executeButton);
+            this.panel1.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this.panel1.Location = new System.Drawing.Point(4, 507);
+            this.panel1.Name = "panel1";
+            this.panel1.Size = new System.Drawing.Size(432, 29);
+            this.panel1.TabIndex = 6;
+            // 
+            // executeButton
+            // 
+            this.executeButton.Enabled = false;
+            this.executeButton.Location = new System.Drawing.Point(3, 3);
+            this.executeButton.Name = "executeButton";
+            this.executeButton.Size = new System.Drawing.Size(75, 23);
+            this.executeButton.TabIndex = 6;
+            this.executeButton.Text = "Execute";
+            this.executeButton.UseVisualStyleBackColor = true;
+            this.executeButton.Click += new System.EventHandler(this.executeButton_Click);
+            // 
+            // label1
+            // 
+            this.label1.Dock = System.Windows.Forms.DockStyle.Top;
+            this.label1.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.label1.Location = new System.Drawing.Point(4, 145);
+            this.label1.Name = "label1";
+            this.label1.Size = new System.Drawing.Size(432, 23);
+            this.label1.TabIndex = 4;
+            this.label1.Text = "Possible resolutions:";
+            // 
+            // retryLabel
+            // 
+            this.retryLabel.Dock = System.Windows.Forms.DockStyle.Top;
+            this.retryLabel.Location = new System.Drawing.Point(4, 105);
+            this.retryLabel.Name = "retryLabel";
+            this.retryLabel.Size = new System.Drawing.Size(432, 40);
+            this.retryLabel.TabIndex = 8;
+            this.retryLabel.Text = "This user already has the required permissions, ask the user to retry the operati" +
+    "on and obtain an updated log file in case of any further errors";
+            this.retryLabel.Visible = false;
+            // 
+            // requiredPrivilegeLabel
+            // 
+            this.requiredPrivilegeLabel.Dock = System.Windows.Forms.DockStyle.Top;
+            this.requiredPrivilegeLabel.Location = new System.Drawing.Point(4, 65);
+            this.requiredPrivilegeLabel.Name = "requiredPrivilegeLabel";
+            this.requiredPrivilegeLabel.Size = new System.Drawing.Size(432, 40);
+            this.requiredPrivilegeLabel.TabIndex = 3;
+            this.requiredPrivilegeLabel.Text = "To resolve this error, the user needs to be granted the prvWriteAccount privilege" +
+    " to Global depth";
             // 
             // targetLinkLabel
             // 
@@ -138,7 +215,7 @@ namespace MarkMpn.SecurityDebugger
             // 
             this.noMatchPanel.Controls.Add(this.linkLabel1);
             this.noMatchPanel.Dock = System.Windows.Forms.DockStyle.Top;
-            this.noMatchPanel.Location = new System.Drawing.Point(0, 0);
+            this.noMatchPanel.Location = new System.Drawing.Point(0, 100);
             this.noMatchPanel.Name = "noMatchPanel";
             this.noMatchPanel.Padding = new System.Windows.Forms.Padding(4);
             this.noMatchPanel.Size = new System.Drawing.Size(440, 49);
@@ -156,64 +233,25 @@ namespace MarkMpn.SecurityDebugger
             this.linkLabel1.Text = resources.GetString("linkLabel1.Text");
             this.linkLabel1.UseCompatibleTextRendering = true;
             // 
-            // requiredPrivilegeLabel
+            // errorPanel
             // 
-            this.requiredPrivilegeLabel.Dock = System.Windows.Forms.DockStyle.Top;
-            this.requiredPrivilegeLabel.Location = new System.Drawing.Point(4, 65);
-            this.requiredPrivilegeLabel.Name = "requiredPrivilegeLabel";
-            this.requiredPrivilegeLabel.Size = new System.Drawing.Size(432, 40);
-            this.requiredPrivilegeLabel.TabIndex = 3;
-            this.requiredPrivilegeLabel.Text = "To resolve this error, the user needs to be granted the prvWriteAccount privilege" +
-    " to Global depth";
+            this.errorPanel.Controls.Add(this.errorLabel);
+            this.errorPanel.Dock = System.Windows.Forms.DockStyle.Top;
+            this.errorPanel.Location = new System.Drawing.Point(0, 0);
+            this.errorPanel.Name = "errorPanel";
+            this.errorPanel.Padding = new System.Windows.Forms.Padding(4);
+            this.errorPanel.Size = new System.Drawing.Size(440, 100);
+            this.errorPanel.TabIndex = 2;
+            this.errorPanel.Visible = false;
             // 
-            // label1
+            // errorLabel
             // 
-            this.label1.Dock = System.Windows.Forms.DockStyle.Top;
-            this.label1.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label1.Location = new System.Drawing.Point(4, 105);
-            this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(432, 23);
-            this.label1.TabIndex = 4;
-            this.label1.Text = "Possible resolutions:";
-            // 
-            // executeButton
-            // 
-            this.executeButton.Enabled = false;
-            this.executeButton.Location = new System.Drawing.Point(3, 3);
-            this.executeButton.Name = "executeButton";
-            this.executeButton.Size = new System.Drawing.Size(75, 23);
-            this.executeButton.TabIndex = 6;
-            this.executeButton.Text = "Execute";
-            this.executeButton.UseVisualStyleBackColor = true;
-            // 
-            // panel1
-            // 
-            this.panel1.Controls.Add(this.executeButton);
-            this.panel1.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.panel1.Location = new System.Drawing.Point(4, 607);
-            this.panel1.Name = "panel1";
-            this.panel1.Size = new System.Drawing.Size(432, 29);
-            this.panel1.TabIndex = 6;
-            // 
-            // resolutionsListView
-            // 
-            this.resolutionsListView.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
-            this.columnHeader1});
-            this.resolutionsListView.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.resolutionsListView.FullRowSelect = true;
-            this.resolutionsListView.HideSelection = false;
-            this.resolutionsListView.Location = new System.Drawing.Point(4, 128);
-            this.resolutionsListView.Name = "resolutionsListView";
-            this.resolutionsListView.Size = new System.Drawing.Size(432, 479);
-            this.resolutionsListView.TabIndex = 7;
-            this.resolutionsListView.UseCompatibleStateImageBehavior = false;
-            this.resolutionsListView.View = System.Windows.Forms.View.Details;
-            this.resolutionsListView.SelectedIndexChanged += new System.EventHandler(this.resolutionsListView_SelectedIndexChanged);
-            // 
-            // columnHeader1
-            // 
-            this.columnHeader1.Text = "Description";
-            this.columnHeader1.Width = 200;
+            this.errorLabel.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.errorLabel.Location = new System.Drawing.Point(4, 4);
+            this.errorLabel.Name = "errorLabel";
+            this.errorLabel.Size = new System.Drawing.Size(432, 92);
+            this.errorLabel.TabIndex = 0;
+            this.errorLabel.Text = "Error";
             // 
             // SecurityDebuggerPluginControl
             // 
@@ -227,8 +265,9 @@ namespace MarkMpn.SecurityDebugger
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).EndInit();
             this.splitContainer1.ResumeLayout(false);
             this.recordPermissionsPanel.ResumeLayout(false);
-            this.noMatchPanel.ResumeLayout(false);
             this.panel1.ResumeLayout(false);
+            this.noMatchPanel.ResumeLayout(false);
+            this.errorPanel.ResumeLayout(false);
             this.ResumeLayout(false);
 
         }
@@ -249,5 +288,8 @@ namespace MarkMpn.SecurityDebugger
         private System.Windows.Forms.Panel panel1;
         private System.Windows.Forms.Button executeButton;
         private System.Windows.Forms.Label label1;
+        private System.Windows.Forms.Panel errorPanel;
+        private System.Windows.Forms.Label errorLabel;
+        private System.Windows.Forms.Label retryLabel;
     }
 }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.ServiceModel;
 using System.Text;
@@ -528,7 +529,7 @@ namespace MarkMpn.SecurityDebugger
 
         class AddSecurityRole : Resolution
         {
-            public override int ImageIndex => 0;
+            public override int ImageIndex => 1;
 
             public EntityReference UserReference { get; set; }
 
@@ -545,13 +546,13 @@ namespace MarkMpn.SecurityDebugger
 
             public override string ToString()
             {
-                return $"Add the {RoleReference.Name} to {UserReference.Name}";
+                return $"Add the {RoleReference.Name} role to {UserReference.Name}";
             }
         }
 
         class EditSecurityRole : Resolution
         {
-            public override int ImageIndex => 2;
+            public override int ImageIndex => 0;
 
             public EntityReference RoleReference { get; set; }
 
@@ -583,7 +584,7 @@ namespace MarkMpn.SecurityDebugger
 
         class ShareRecord : Resolution
         {
-            public override int ImageIndex => 3;
+            public override int ImageIndex => 2;
 
             public EntityReference UserReference { get; set; }
 
@@ -638,6 +639,12 @@ namespace MarkMpn.SecurityDebugger
                 },
                 PostWorkCallBack = result => ParseError()
             });
+        }
+
+        private void toolStripButton1_Click(object sender, EventArgs e)
+        {
+            if (openFileDialog.ShowDialog() == DialogResult.OK)
+                scintilla1.Text = File.ReadAllText(openFileDialog.FileName);
         }
     }
 }

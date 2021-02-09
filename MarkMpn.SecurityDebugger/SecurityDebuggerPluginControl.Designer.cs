@@ -34,46 +34,48 @@ namespace MarkMpn.SecurityDebugger
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.scintilla1 = new ScintillaNET.Scintilla();
             this.toolStrip = new System.Windows.Forms.ToolStrip();
-            this.toolStripButton1 = new System.Windows.Forms.ToolStripButton();
             this.recordPermissionsPanel = new System.Windows.Forms.Panel();
             this.resolutionsListView = new System.Windows.Forms.ListView();
             this.columnHeader1 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.imageList = new System.Windows.Forms.ImageList(this.components);
             this.label1 = new System.Windows.Forms.Label();
-            this.panel4 = new System.Windows.Forms.Panel();
+            this.retryPanel = new System.Windows.Forms.Panel();
             this.retryLabel = new System.Windows.Forms.Label();
-            this.pictureBox4 = new System.Windows.Forms.PictureBox();
-            this.panel2 = new System.Windows.Forms.Panel();
-            this.panel3 = new System.Windows.Forms.Panel();
+            this.requiredPermissionPanel = new System.Windows.Forms.Panel();
+            this.decodedPanel = new System.Windows.Forms.Panel();
             this.requiredPrivilegeLabel = new System.Windows.Forms.Label();
             this.targetLinkLabel = new System.Windows.Forms.LinkLabel();
             this.missingPrivilegeLinkLabel = new System.Windows.Forms.LinkLabel();
             this.userLinkLabel = new System.Windows.Forms.LinkLabel();
-            this.pictureBox3 = new System.Windows.Forms.PictureBox();
             this.panel1 = new System.Windows.Forms.Panel();
             this.executeButton = new System.Windows.Forms.Button();
             this.noMatchPanel = new System.Windows.Forms.Panel();
             this.createIssueLinkLabel = new System.Windows.Forms.LinkLabel();
-            this.pictureBox2 = new System.Windows.Forms.PictureBox();
             this.errorPanel = new System.Windows.Forms.Panel();
             this.errorLabel = new System.Windows.Forms.Label();
-            this.pictureBox1 = new System.Windows.Forms.PictureBox();
             this.openFileDialog = new System.Windows.Forms.OpenFileDialog();
+            this.toolStripButton1 = new System.Windows.Forms.ToolStripButton();
+            this.pictureBox4 = new System.Windows.Forms.PictureBox();
+            this.requiredDepthImage = new System.Windows.Forms.PictureBox();
+            this.pictureBox3 = new System.Windows.Forms.PictureBox();
+            this.pictureBox2 = new System.Windows.Forms.PictureBox();
+            this.pictureBox1 = new System.Windows.Forms.PictureBox();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
             this.splitContainer1.SuspendLayout();
             this.toolStrip.SuspendLayout();
             this.recordPermissionsPanel.SuspendLayout();
-            this.panel4.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox4)).BeginInit();
-            this.panel2.SuspendLayout();
-            this.panel3.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox3)).BeginInit();
+            this.retryPanel.SuspendLayout();
+            this.requiredPermissionPanel.SuspendLayout();
+            this.decodedPanel.SuspendLayout();
             this.panel1.SuspendLayout();
             this.noMatchPanel.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).BeginInit();
             this.errorPanel.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox4)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.requiredDepthImage)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox3)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.SuspendLayout();
             // 
@@ -119,21 +121,13 @@ namespace MarkMpn.SecurityDebugger
             this.toolStrip.TabIndex = 1;
             this.toolStrip.Text = "toolStrip1";
             // 
-            // toolStripButton1
-            // 
-            this.toolStripButton1.Image = ((System.Drawing.Image)(resources.GetObject("toolStripButton1.Image")));
-            this.toolStripButton1.ImageTransparentColor = System.Drawing.Color.Magenta;
-            this.toolStripButton1.Name = "toolStripButton1";
-            this.toolStripButton1.Size = new System.Drawing.Size(56, 22);
-            this.toolStripButton1.Text = "Open";
-            this.toolStripButton1.Click += new System.EventHandler(this.toolStripButton1_Click);
-            // 
             // recordPermissionsPanel
             // 
             this.recordPermissionsPanel.Controls.Add(this.resolutionsListView);
             this.recordPermissionsPanel.Controls.Add(this.label1);
-            this.recordPermissionsPanel.Controls.Add(this.panel4);
-            this.recordPermissionsPanel.Controls.Add(this.panel2);
+            this.recordPermissionsPanel.Controls.Add(this.retryPanel);
+            this.recordPermissionsPanel.Controls.Add(this.requiredPermissionPanel);
+            this.recordPermissionsPanel.Controls.Add(this.decodedPanel);
             this.recordPermissionsPanel.Controls.Add(this.panel1);
             this.recordPermissionsPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this.recordPermissionsPanel.Location = new System.Drawing.Point(0, 149);
@@ -150,9 +144,9 @@ namespace MarkMpn.SecurityDebugger
             this.resolutionsListView.Dock = System.Windows.Forms.DockStyle.Fill;
             this.resolutionsListView.FullRowSelect = true;
             this.resolutionsListView.HideSelection = false;
-            this.resolutionsListView.Location = new System.Drawing.Point(4, 162);
+            this.resolutionsListView.Location = new System.Drawing.Point(4, 147);
             this.resolutionsListView.Name = "resolutionsListView";
-            this.resolutionsListView.Size = new System.Drawing.Size(432, 345);
+            this.resolutionsListView.Size = new System.Drawing.Size(432, 360);
             this.resolutionsListView.SmallImageList = this.imageList;
             this.resolutionsListView.TabIndex = 12;
             this.resolutionsListView.UseCompatibleStateImageBehavior = false;
@@ -176,71 +170,61 @@ namespace MarkMpn.SecurityDebugger
             // 
             this.label1.Dock = System.Windows.Forms.DockStyle.Top;
             this.label1.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label1.Location = new System.Drawing.Point(4, 139);
+            this.label1.Location = new System.Drawing.Point(4, 124);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(432, 23);
             this.label1.TabIndex = 11;
             this.label1.Text = "Possible resolutions:";
             // 
-            // panel4
+            // retryPanel
             // 
-            this.panel4.Controls.Add(this.retryLabel);
-            this.panel4.Controls.Add(this.pictureBox4);
-            this.panel4.Dock = System.Windows.Forms.DockStyle.Top;
-            this.panel4.Location = new System.Drawing.Point(4, 107);
-            this.panel4.Name = "panel4";
-            this.panel4.Size = new System.Drawing.Size(432, 32);
-            this.panel4.TabIndex = 10;
+            this.retryPanel.Controls.Add(this.retryLabel);
+            this.retryPanel.Controls.Add(this.pictureBox4);
+            this.retryPanel.Dock = System.Windows.Forms.DockStyle.Top;
+            this.retryPanel.Location = new System.Drawing.Point(4, 92);
+            this.retryPanel.Name = "retryPanel";
+            this.retryPanel.Size = new System.Drawing.Size(432, 32);
+            this.retryPanel.TabIndex = 10;
+            this.retryPanel.Visible = false;
             // 
             // retryLabel
             // 
-            this.retryLabel.Dock = System.Windows.Forms.DockStyle.Top;
+            this.retryLabel.Dock = System.Windows.Forms.DockStyle.Fill;
             this.retryLabel.Location = new System.Drawing.Point(17, 0);
             this.retryLabel.Name = "retryLabel";
-            this.retryLabel.Size = new System.Drawing.Size(415, 40);
+            this.retryLabel.Size = new System.Drawing.Size(415, 32);
             this.retryLabel.TabIndex = 9;
             this.retryLabel.Text = "This user already has the required permissions, ask the user to retry the operati" +
     "on and obtain an updated log file in case of any further errors";
-            this.retryLabel.Visible = false;
             // 
-            // pictureBox4
+            // requiredPermissionPanel
             // 
-            this.pictureBox4.Dock = System.Windows.Forms.DockStyle.Left;
-            this.pictureBox4.Image = global::MarkMpn.SecurityDebugger.Properties.Resources.StatusSecurityOK_16x;
-            this.pictureBox4.Location = new System.Drawing.Point(0, 0);
-            this.pictureBox4.Name = "pictureBox4";
-            this.pictureBox4.Size = new System.Drawing.Size(17, 32);
-            this.pictureBox4.TabIndex = 0;
-            this.pictureBox4.TabStop = false;
+            this.requiredPermissionPanel.Controls.Add(this.requiredPrivilegeLabel);
+            this.requiredPermissionPanel.Controls.Add(this.requiredDepthImage);
+            this.requiredPermissionPanel.Dock = System.Windows.Forms.DockStyle.Top;
+            this.requiredPermissionPanel.Location = new System.Drawing.Point(4, 58);
+            this.requiredPermissionPanel.Name = "requiredPermissionPanel";
+            this.requiredPermissionPanel.Size = new System.Drawing.Size(432, 34);
+            this.requiredPermissionPanel.TabIndex = 7;
             // 
-            // panel2
+            // decodedPanel
             // 
-            this.panel2.Controls.Add(this.panel3);
-            this.panel2.Controls.Add(this.pictureBox3);
-            this.panel2.Dock = System.Windows.Forms.DockStyle.Top;
-            this.panel2.Location = new System.Drawing.Point(4, 4);
-            this.panel2.Name = "panel2";
-            this.panel2.Size = new System.Drawing.Size(432, 103);
-            this.panel2.TabIndex = 9;
-            // 
-            // panel3
-            // 
-            this.panel3.Controls.Add(this.requiredPrivilegeLabel);
-            this.panel3.Controls.Add(this.targetLinkLabel);
-            this.panel3.Controls.Add(this.missingPrivilegeLinkLabel);
-            this.panel3.Controls.Add(this.userLinkLabel);
-            this.panel3.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.panel3.Location = new System.Drawing.Point(17, 0);
-            this.panel3.Name = "panel3";
-            this.panel3.Size = new System.Drawing.Size(415, 103);
-            this.panel3.TabIndex = 1;
+            this.decodedPanel.Controls.Add(this.targetLinkLabel);
+            this.decodedPanel.Controls.Add(this.missingPrivilegeLinkLabel);
+            this.decodedPanel.Controls.Add(this.userLinkLabel);
+            this.decodedPanel.Controls.Add(this.pictureBox3);
+            this.decodedPanel.Dock = System.Windows.Forms.DockStyle.Top;
+            this.decodedPanel.Location = new System.Drawing.Point(4, 4);
+            this.decodedPanel.Name = "decodedPanel";
+            this.decodedPanel.Size = new System.Drawing.Size(432, 54);
+            this.decodedPanel.TabIndex = 9;
             // 
             // requiredPrivilegeLabel
             // 
-            this.requiredPrivilegeLabel.Dock = System.Windows.Forms.DockStyle.Top;
-            this.requiredPrivilegeLabel.Location = new System.Drawing.Point(0, 61);
+            this.requiredPrivilegeLabel.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.requiredPrivilegeLabel.Location = new System.Drawing.Point(17, 0);
             this.requiredPrivilegeLabel.Name = "requiredPrivilegeLabel";
-            this.requiredPrivilegeLabel.Size = new System.Drawing.Size(415, 40);
+            this.requiredPrivilegeLabel.Size = new System.Drawing.Size(415, 34);
             this.requiredPrivilegeLabel.TabIndex = 6;
             this.requiredPrivilegeLabel.Text = "To resolve this error, the user needs to be granted the prvWriteAccount privilege" +
     " to Global depth";
@@ -249,7 +233,7 @@ namespace MarkMpn.SecurityDebugger
             // 
             this.targetLinkLabel.Dock = System.Windows.Forms.DockStyle.Top;
             this.targetLinkLabel.LinkArea = new System.Windows.Forms.LinkArea(15, 5);
-            this.targetLinkLabel.Location = new System.Drawing.Point(0, 34);
+            this.targetLinkLabel.Location = new System.Drawing.Point(17, 34);
             this.targetLinkLabel.Name = "targetLinkLabel";
             this.targetLinkLabel.Size = new System.Drawing.Size(415, 27);
             this.targetLinkLabel.TabIndex = 5;
@@ -262,7 +246,7 @@ namespace MarkMpn.SecurityDebugger
             // 
             this.missingPrivilegeLinkLabel.Dock = System.Windows.Forms.DockStyle.Top;
             this.missingPrivilegeLinkLabel.LinkArea = new System.Windows.Forms.LinkArea(0, 0);
-            this.missingPrivilegeLinkLabel.Location = new System.Drawing.Point(0, 17);
+            this.missingPrivilegeLinkLabel.Location = new System.Drawing.Point(17, 17);
             this.missingPrivilegeLinkLabel.Name = "missingPrivilegeLinkLabel";
             this.missingPrivilegeLinkLabel.Size = new System.Drawing.Size(415, 17);
             this.missingPrivilegeLinkLabel.TabIndex = 4;
@@ -272,7 +256,7 @@ namespace MarkMpn.SecurityDebugger
             // 
             this.userLinkLabel.Dock = System.Windows.Forms.DockStyle.Top;
             this.userLinkLabel.LinkArea = new System.Windows.Forms.LinkArea(9, 15);
-            this.userLinkLabel.Location = new System.Drawing.Point(0, 0);
+            this.userLinkLabel.Location = new System.Drawing.Point(17, 0);
             this.userLinkLabel.Name = "userLinkLabel";
             this.userLinkLabel.Size = new System.Drawing.Size(415, 17);
             this.userLinkLabel.TabIndex = 3;
@@ -280,16 +264,6 @@ namespace MarkMpn.SecurityDebugger
             this.userLinkLabel.Text = "The user Mark Carrington";
             this.userLinkLabel.UseCompatibleTextRendering = true;
             this.userLinkLabel.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.userLinkLabel_LinkClicked);
-            // 
-            // pictureBox3
-            // 
-            this.pictureBox3.Dock = System.Windows.Forms.DockStyle.Left;
-            this.pictureBox3.Image = global::MarkMpn.SecurityDebugger.Properties.Resources.StatusSecurityWarning_grey_16x;
-            this.pictureBox3.Location = new System.Drawing.Point(0, 0);
-            this.pictureBox3.Name = "pictureBox3";
-            this.pictureBox3.Size = new System.Drawing.Size(17, 103);
-            this.pictureBox3.TabIndex = 0;
-            this.pictureBox3.TabStop = false;
             // 
             // panel1
             // 
@@ -335,16 +309,6 @@ namespace MarkMpn.SecurityDebugger
             this.createIssueLinkLabel.UseCompatibleTextRendering = true;
             this.createIssueLinkLabel.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.createIssueLinkLabel_LinkClicked);
             // 
-            // pictureBox2
-            // 
-            this.pictureBox2.Dock = System.Windows.Forms.DockStyle.Left;
-            this.pictureBox2.Image = global::MarkMpn.SecurityDebugger.Properties.Resources.StatusInformation_16x;
-            this.pictureBox2.Location = new System.Drawing.Point(4, 4);
-            this.pictureBox2.Name = "pictureBox2";
-            this.pictureBox2.Size = new System.Drawing.Size(17, 41);
-            this.pictureBox2.TabIndex = 1;
-            this.pictureBox2.TabStop = false;
-            // 
             // errorPanel
             // 
             this.errorPanel.Controls.Add(this.errorLabel);
@@ -366,6 +330,59 @@ namespace MarkMpn.SecurityDebugger
             this.errorLabel.TabIndex = 2;
             this.errorLabel.Text = "Error";
             // 
+            // openFileDialog
+            // 
+            this.openFileDialog.DefaultExt = "txt";
+            this.openFileDialog.Filter = "Error Log (ErrorDetails*.txt)|ErrorDetails*.txt";
+            // 
+            // toolStripButton1
+            // 
+            this.toolStripButton1.Image = ((System.Drawing.Image)(resources.GetObject("toolStripButton1.Image")));
+            this.toolStripButton1.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.toolStripButton1.Name = "toolStripButton1";
+            this.toolStripButton1.Size = new System.Drawing.Size(56, 22);
+            this.toolStripButton1.Text = "Open";
+            this.toolStripButton1.Click += new System.EventHandler(this.toolStripButton1_Click);
+            // 
+            // pictureBox4
+            // 
+            this.pictureBox4.Dock = System.Windows.Forms.DockStyle.Left;
+            this.pictureBox4.Image = global::MarkMpn.SecurityDebugger.Properties.Resources.StatusSecurityOK_16x;
+            this.pictureBox4.Location = new System.Drawing.Point(0, 0);
+            this.pictureBox4.Name = "pictureBox4";
+            this.pictureBox4.Size = new System.Drawing.Size(17, 32);
+            this.pictureBox4.TabIndex = 0;
+            this.pictureBox4.TabStop = false;
+            // 
+            // requiredDepthImage
+            // 
+            this.requiredDepthImage.Dock = System.Windows.Forms.DockStyle.Left;
+            this.requiredDepthImage.Location = new System.Drawing.Point(0, 0);
+            this.requiredDepthImage.Name = "requiredDepthImage";
+            this.requiredDepthImage.Size = new System.Drawing.Size(17, 34);
+            this.requiredDepthImage.TabIndex = 0;
+            this.requiredDepthImage.TabStop = false;
+            // 
+            // pictureBox3
+            // 
+            this.pictureBox3.Dock = System.Windows.Forms.DockStyle.Left;
+            this.pictureBox3.Image = global::MarkMpn.SecurityDebugger.Properties.Resources.StatusSecurityWarning_grey_16x;
+            this.pictureBox3.Location = new System.Drawing.Point(0, 0);
+            this.pictureBox3.Name = "pictureBox3";
+            this.pictureBox3.Size = new System.Drawing.Size(17, 54);
+            this.pictureBox3.TabIndex = 0;
+            this.pictureBox3.TabStop = false;
+            // 
+            // pictureBox2
+            // 
+            this.pictureBox2.Dock = System.Windows.Forms.DockStyle.Left;
+            this.pictureBox2.Image = global::MarkMpn.SecurityDebugger.Properties.Resources.StatusInformation_16x;
+            this.pictureBox2.Location = new System.Drawing.Point(4, 4);
+            this.pictureBox2.Name = "pictureBox2";
+            this.pictureBox2.Size = new System.Drawing.Size(17, 41);
+            this.pictureBox2.TabIndex = 1;
+            this.pictureBox2.TabStop = false;
+            // 
             // pictureBox1
             // 
             this.pictureBox1.Dock = System.Windows.Forms.DockStyle.Left;
@@ -375,11 +392,6 @@ namespace MarkMpn.SecurityDebugger
             this.pictureBox1.Size = new System.Drawing.Size(17, 92);
             this.pictureBox1.TabIndex = 1;
             this.pictureBox1.TabStop = false;
-            // 
-            // openFileDialog
-            // 
-            this.openFileDialog.DefaultExt = "txt";
-            this.openFileDialog.Filter = "Error Log (ErrorDetails*.txt)|ErrorDetails*.txt";
             // 
             // SecurityDebuggerPluginControl
             // 
@@ -396,15 +408,16 @@ namespace MarkMpn.SecurityDebugger
             this.toolStrip.ResumeLayout(false);
             this.toolStrip.PerformLayout();
             this.recordPermissionsPanel.ResumeLayout(false);
-            this.panel4.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox4)).EndInit();
-            this.panel2.ResumeLayout(false);
-            this.panel3.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox3)).EndInit();
+            this.retryPanel.ResumeLayout(false);
+            this.requiredPermissionPanel.ResumeLayout(false);
+            this.decodedPanel.ResumeLayout(false);
             this.panel1.ResumeLayout(false);
             this.noMatchPanel.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).EndInit();
             this.errorPanel.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox4)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.requiredDepthImage)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox3)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
             this.ResumeLayout(false);
 
@@ -422,14 +435,13 @@ namespace MarkMpn.SecurityDebugger
         private System.Windows.Forms.PictureBox pictureBox2;
         private System.Windows.Forms.Label errorLabel;
         private System.Windows.Forms.PictureBox pictureBox1;
-        private System.Windows.Forms.Panel panel2;
-        private System.Windows.Forms.Panel panel3;
+        private System.Windows.Forms.Panel decodedPanel;
         private System.Windows.Forms.LinkLabel targetLinkLabel;
         private System.Windows.Forms.LinkLabel missingPrivilegeLinkLabel;
         private System.Windows.Forms.LinkLabel userLinkLabel;
         private System.Windows.Forms.PictureBox pictureBox3;
         private System.Windows.Forms.LinkLabel createIssueLinkLabel;
-        private System.Windows.Forms.Panel panel4;
+        private System.Windows.Forms.Panel retryPanel;
         private System.Windows.Forms.PictureBox pictureBox4;
         private System.Windows.Forms.Label requiredPrivilegeLabel;
         private System.Windows.Forms.ListView resolutionsListView;
@@ -440,5 +452,7 @@ namespace MarkMpn.SecurityDebugger
         private System.Windows.Forms.ToolStrip toolStrip;
         private System.Windows.Forms.ToolStripButton toolStripButton1;
         private System.Windows.Forms.OpenFileDialog openFileDialog;
+        private System.Windows.Forms.Panel requiredPermissionPanel;
+        private System.Windows.Forms.PictureBox requiredDepthImage;
     }
 }

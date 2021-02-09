@@ -203,5 +203,17 @@
   <ItemGroup>
     <None Include="Resources\StatusSecurityOK_16x.png" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Basic.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Deep.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Global.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Local.png" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -46,7 +46,7 @@ namespace MarkMpn.SecurityDebugger
             noMatchPanel.Visible = true;
             recordPermissionsPanel.Visible = false;
             errorPanel.Visible = false;
-            retryLabel.Visible = false;
+            retryPanel.Visible = false;
 
             scintilla1.StartStyling(0);
             scintilla1.SetStyling(scintilla1.TextLength, 0);
@@ -133,7 +133,7 @@ namespace MarkMpn.SecurityDebugger
                                         });
 
                                         if ((recordAccess.AccessRights & accessRights) == accessRights)
-                                            InvokeIfRequired(() => retryLabel.Visible = true);
+                                            InvokeIfRequired(() => retryPanel.Visible = true);
                                     }
                                     else
                                     {
@@ -144,7 +144,7 @@ namespace MarkMpn.SecurityDebugger
                                         });
 
                                         if (priv.RolePrivileges.Any())
-                                            InvokeIfRequired(() => retryLabel.Visible = true);
+                                            InvokeIfRequired(() => retryPanel.Visible = true);
                                     }
                                 }
                                 catch (FaultException<OrganizationServiceFault>)
@@ -188,21 +188,43 @@ namespace MarkMpn.SecurityDebugger
                                         privilegeDepth = PrivilegeDepth.Global;
 
                                     requiredPrivilegeLabel.Text = $"To resolve this error, the user needs to be granted the {privilegeRef.Name} privilege to {privilegeDepth} depth";
+
+                                    switch (privilegeDepth)
+                                    {
+                                        case PrivilegeDepth.Basic:
+                                            requiredDepthImage.Image = Properties.Resources.Basic;
+                                            break;
+
+                                        case PrivilegeDepth.Local:
+                                            requiredDepthImage.Image = Properties.Resources.Local;
+                                            break;
+
+                                        case PrivilegeDepth.Deep:
+                                            requiredDepthImage.Image = Properties.Resources.Deep;
+                                            break;
+
+                                        case PrivilegeDepth.Global:
+                                            requiredDepthImage.Image = Properties.Resources.Global;
+                                            break;
+                                    }
                                 });
 
                                 var resolutions = new List<Resolution>();
 
                                 // Find roles that include the required permission and suggest to add them to the user
+                                var depthQuery = 2 ^ (int) privilegeDepth;
+
                                 var sufficientRoleQry = new FetchExpression($@"
                                     <fetch xmlns:generator='MarkMpn.SQL4CDS'>
                                         <entity name='role'>
-                                        <attribute name='name' />
-                                        <link-entity name='roleprivileges' to='roleid' from='roleid' alias='rp' link-type='inner' />
-                                        <filter>
-                                            <condition attribute='privilegeid' entityname='rp' operator='eq' value='{privilege.Id}' />
-                                            <condition attribute='privilegedepthmask' entityname='rp' operator='ge' value='{(int)privilegeDepth}' />
-                                        </filter>
-                                        <order attribute='name' />
+                                            <attribute name='name' />
+                                            <link-entity name='roleprivileges' to='roleid' from='roleid' alias='rp' link-type='inner'>
+                                                <filter>
+                                                    <condition attribute='privilegeid' operator='eq' value='{privilege.Id}' />
+                                                    <condition attribute='privilegedepthmask' operator='ge' value='{depthQuery}' />
+                                                </filter>
+                                            </link-entity>
+                                            <order attribute='name' />
                                         </entity>
                                     </fetch>");
                                 var sufficientRoles = Service.RetrieveMultiple(sufficientRoleQry);
@@ -222,15 +244,26 @@ namespace MarkMpn.SecurityDebugger
                                 }
 
                                 // Find roles currently assigned to the user and suggest them to be edited to include the required permission
-                                var existingRoleQry = new FetchExpression(@"
+                                var existingRoleQry = new FetchExpression($@"
                                     <fetch xmlns:generator='MarkMpn.SQL4CDS'>
                                         <entity name='role'>
-                                        <attribute name='name' />
-                                        <link-entity name='systemuserroles' to='roleid' from='roleid' alias='sur' link-type='inner' />
-                                        <filter>
-                                            <condition attribute='systemuserid' entityname='sur' operator='eq-userid' />
-                                        </filter>
-                                        <order attribute='name' />
+                                            <attribute name='name' />
+                                            <link-entity name='roleprivileges' to='roleid' from='roleid' alias='rp' link-type='outer'>
+                                                <attribute name='privilegedepthmask' />
+                                                <filter>
+                                                    <condition attribute='privilegeid' operator='eq' value='{privilege.Id}' />
+                                                </filter>
+                                            </link-entity>
+                                            <link-entity name='systemuserroles' to='roleid' from='roleid' alias='sur' link-type='inner'>
+                                                <filter>
+                                                    <condition attribute='systemuserid' operator='eq' value='{_principalReference.Id}' />
+                                                </filter>
+                                            </link-entity>
+                                            <filter type='or'>
+                                                <condition entityname='rp' attribute='privilegeid' operator='null' />
+                                                <condition entityname='rp' attribute='privilegedepthmask' operator='lt' value='{depthQuery}' />
+                                            </filter>
+                                            <order attribute='name' />
                                         </entity>
                                     </fetch>");
                                 var existingRoles = Service.RetrieveMultiple(existingRoleQry);
@@ -239,12 +272,14 @@ namespace MarkMpn.SecurityDebugger
                                 {
                                     var roleRef = role.ToEntityReference();
                                     roleRef.Name = role.GetAttributeValue<string>("name");
+                                    var existingDepth = role.GetAttributeValue<AliasedValue>("rp.privilegedepthmask");
 
                                     var editRole = new EditSecurityRole
                                     {
                                         RoleReference = roleRef,
                                         PrivilegeReference = privilegeRef,
-                                        Depth = privilegeDepth
+                                        Depth = privilegeDepth,
+                                        ExistingDepth = existingDepth == null ? (PrivilegeDepth?)null : (PrivilegeDepth) Math.Log((int)existingDepth.Value, 2)
                                     };
 
                                     resolutions.Add(editRole);
@@ -572,6 +607,8 @@ namespace MarkMpn.SecurityDebugger
 
             public PrivilegeDepth Depth { get; set; }
 
+            public PrivilegeDepth? ExistingDepth { get; set; }
+
             public override void Execute(IOrganizationService org)
             {
                 org.Execute(new AddPrivilegesRoleRequest
@@ -590,7 +627,10 @@ namespace MarkMpn.SecurityDebugger
 
             public override string ToString()
             {
-                return $"Add the {PrivilegeReference.Name} privilege to the {RoleReference.Name} role at {Depth} depth";
+                if (ExistingDepth == null)
+                    return $"Add the {PrivilegeReference.Name} privilege to the {RoleReference.Name} role at {Depth} depth";
+
+                return $"Change the depth of the {PrivilegeReference.Name} privilege in the {RoleReference.Name} role from {ExistingDepth.Value} to {Depth}";
             }
         }
 
@@ -619,7 +659,7 @@ namespace MarkMpn.SecurityDebugger
 
             public override string ToString()
             {
-                return $"Share the {TargetReference.Name} record with {UserReference.Name} with {AccessRights.ToString().Replace("Access", "")} access";
+                return $"Share the {(TargetReference.Name ?? "<Unnamed>")} record with {UserReference.Name} with {AccessRights.ToString().Replace("Access", "")} access";
             }
         }
 

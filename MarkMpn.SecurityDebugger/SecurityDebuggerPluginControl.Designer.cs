@@ -53,7 +53,7 @@ namespace MarkMpn.SecurityDebugger
             this.panel1 = new System.Windows.Forms.Panel();
             this.executeButton = new System.Windows.Forms.Button();
             this.noMatchPanel = new System.Windows.Forms.Panel();
-            this.linkLabel1 = new System.Windows.Forms.LinkLabel();
+            this.createIssueLinkLabel = new System.Windows.Forms.LinkLabel();
             this.pictureBox2 = new System.Windows.Forms.PictureBox();
             this.errorPanel = new System.Windows.Forms.Panel();
             this.errorLabel = new System.Windows.Forms.Label();
@@ -256,6 +256,7 @@ namespace MarkMpn.SecurityDebugger
             this.targetLinkLabel.TabStop = true;
             this.targetLinkLabel.Text = "on the account Data8";
             this.targetLinkLabel.UseCompatibleTextRendering = true;
+            this.targetLinkLabel.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.targetLinkLabel_LinkClicked);
             // 
             // missingPrivilegeLinkLabel
             // 
@@ -278,6 +279,7 @@ namespace MarkMpn.SecurityDebugger
             this.userLinkLabel.TabStop = true;
             this.userLinkLabel.Text = "The user Mark Carrington";
             this.userLinkLabel.UseCompatibleTextRendering = true;
+            this.userLinkLabel.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.userLinkLabel_LinkClicked);
             // 
             // pictureBox3
             // 
@@ -311,7 +313,7 @@ namespace MarkMpn.SecurityDebugger
             // 
             // noMatchPanel
             // 
-            this.noMatchPanel.Controls.Add(this.linkLabel1);
+            this.noMatchPanel.Controls.Add(this.createIssueLinkLabel);
             this.noMatchPanel.Controls.Add(this.pictureBox2);
             this.noMatchPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this.noMatchPanel.Location = new System.Drawing.Point(0, 100);
@@ -320,17 +322,18 @@ namespace MarkMpn.SecurityDebugger
             this.noMatchPanel.Size = new System.Drawing.Size(440, 49);
             this.noMatchPanel.TabIndex = 0;
             // 
-            // linkLabel1
+            // createIssueLinkLabel
             // 
-            this.linkLabel1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.linkLabel1.LinkArea = new System.Windows.Forms.LinkArea(163, 25);
-            this.linkLabel1.Location = new System.Drawing.Point(21, 4);
-            this.linkLabel1.Name = "linkLabel1";
-            this.linkLabel1.Size = new System.Drawing.Size(415, 41);
-            this.linkLabel1.TabIndex = 2;
-            this.linkLabel1.TabStop = true;
-            this.linkLabel1.Text = resources.GetString("linkLabel1.Text");
-            this.linkLabel1.UseCompatibleTextRendering = true;
+            this.createIssueLinkLabel.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.createIssueLinkLabel.LinkArea = new System.Windows.Forms.LinkArea(163, 25);
+            this.createIssueLinkLabel.Location = new System.Drawing.Point(21, 4);
+            this.createIssueLinkLabel.Name = "createIssueLinkLabel";
+            this.createIssueLinkLabel.Size = new System.Drawing.Size(415, 41);
+            this.createIssueLinkLabel.TabIndex = 2;
+            this.createIssueLinkLabel.TabStop = true;
+            this.createIssueLinkLabel.Text = resources.GetString("createIssueLinkLabel.Text");
+            this.createIssueLinkLabel.UseCompatibleTextRendering = true;
+            this.createIssueLinkLabel.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.createIssueLinkLabel_LinkClicked);
             // 
             // pictureBox2
             // 
@@ -425,7 +428,7 @@ namespace MarkMpn.SecurityDebugger
         private System.Windows.Forms.LinkLabel missingPrivilegeLinkLabel;
         private System.Windows.Forms.LinkLabel userLinkLabel;
         private System.Windows.Forms.PictureBox pictureBox3;
-        private System.Windows.Forms.LinkLabel linkLabel1;
+        private System.Windows.Forms.LinkLabel createIssueLinkLabel;
         private System.Windows.Forms.Panel panel4;
         private System.Windows.Forms.PictureBox pictureBox4;
         private System.Windows.Forms.Label requiredPrivilegeLabel;

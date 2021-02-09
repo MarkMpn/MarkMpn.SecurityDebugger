@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -18,11 +19,15 @@ using Microsoft.Xrm.Sdk.Metadata.Query;
 using Microsoft.Xrm.Sdk.Query;
 using ScintillaNET;
 using XrmToolBox.Extensibility;
+using XrmToolBox.Extensibility.Interfaces;
 
 namespace MarkMpn.SecurityDebugger
 {
-    public partial class SecurityDebuggerPluginControl : PluginControlBase
+    public partial class SecurityDebuggerPluginControl : PluginControlBase, IGitHubPlugin, IAboutPlugin, IHelpPlugin
     {
+        private EntityReference _principalReference;
+        private EntityReference _targetReference;
+
         public SecurityDebuggerPluginControl()
         {
             InitializeComponent();
@@ -99,25 +104,25 @@ namespace MarkMpn.SecurityDebugger
                             try
                             {
                                 // Extract the details from the error message
-                                var principal = ExtractPrincipal(match, out var principalTypeDisplayName);
+                                _principalReference = ExtractPrincipal(match, out var principalTypeDisplayName);
                                 var target = ExtractTarget(match, out var targetTypeDisplayName);
                                 var privilege = ExtractPrivilege(match, target);
-                                var privilegeDepth = ExtractPrivilegeDepth(match, principal, target);
+                                var privilegeDepth = ExtractPrivilegeDepth(match, _principalReference, target);
 
                                 var accessRights = (AccessRights)privilege.GetAttributeValue<int>("accessright");
-                                var targetReference = target as EntityReference;
+                                _targetReference = target as EntityReference;
                                 var privilegeRef = privilege.ToEntityReference();
                                 privilegeRef.Name = privilege.GetAttributeValue<string>("name");
 
                                 // Check if the problem should still exist
                                 try
                                 {
-                                    if (targetReference != null && accessRights != AccessRights.None)
+                                    if (_targetReference != null && accessRights != AccessRights.None)
                                     {
                                         var recordAccess = (RetrievePrincipalAccessResponse)Service.Execute(new RetrievePrincipalAccessRequest
                                         {
-                                            Principal = principal,
-                                            Target = targetReference
+                                            Principal = _principalReference,
+                                            Target = _targetReference
                                         });
 
                                         if ((recordAccess.AccessRights & accessRights) == accessRights)
@@ -127,7 +132,7 @@ namespace MarkMpn.SecurityDebugger
                                     {
                                         var priv = (RetrieveUserPrivilegeByPrivilegeIdResponse)Service.Execute(new RetrieveUserPrivilegeByPrivilegeIdRequest
                                         {
-                                            UserId = principal.Id,
+                                            UserId = _principalReference.Id,
                                             PrivilegeId = privilege.Id
                                         });
 
@@ -144,7 +149,7 @@ namespace MarkMpn.SecurityDebugger
                                 InvokeIfRequired(() =>
                                 {
                                     var userPrefix = $"The {principalTypeDisplayName} ";
-                                    var userName = principal.Name;
+                                    var userName = _principalReference.Name;
                                     userLinkLabel.Text = userPrefix + userName;
                                     userLinkLabel.LinkArea = new LinkArea(userPrefix.Length, userName.Length);
 
@@ -154,12 +159,12 @@ namespace MarkMpn.SecurityDebugger
                                         missingPrivilegeLinkLabel.Text = $"does not have {accessRights.ToString().Replace("Access", "")} permission";
 
                                     var prefix = $"on the {targetTypeDisplayName} ";
-                                    string link;
+                                    var link = "";
 
-                                    if (targetReference != null)
-                                        link = targetReference.Name;
+                                    if (_targetReference != null)
+                                        link = _targetReference.Name;
                                     else
-                                        link = ((EntityMetadata)target).DisplayName.UserLocalizedLabel.Label;
+                                        prefix += ((EntityMetadata)target).DisplayName.UserLocalizedLabel.Label;
 
                                     targetLinkLabel.Text = prefix + link;
                                     targetLinkLabel.LinkArea = new LinkArea(prefix.Length, link.Length);
@@ -202,7 +207,7 @@ namespace MarkMpn.SecurityDebugger
 
                                     var addRole = new AddSecurityRole
                                     {
-                                        UserReference = principal,
+                                        UserReference = _principalReference,
                                         RoleReference = roleRef
                                     };
 
@@ -238,13 +243,13 @@ namespace MarkMpn.SecurityDebugger
                                     resolutions.Add(editRole);
                                 }
 
-                                if (targetReference != null)
+                                if (_targetReference != null)
                                 {
                                     // Suggest sharing the record with the required permission
                                     var sharing = new ShareRecord
                                     {
-                                        UserReference = principal,
-                                        TargetReference = targetReference,
+                                        UserReference = _principalReference,
+                                        TargetReference = _targetReference,
                                         AccessRights = accessRights
                                     };
 
@@ -646,5 +651,33 @@ namespace MarkMpn.SecurityDebugger
             if (openFileDialog.ShowDialog() == DialogResult.OK)
                 scintilla1.Text = File.ReadAllText(openFileDialog.FileName);
         }
+
+        private void userLinkLabel_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            var url = ConnectionDetail.WebApplicationUrl + $"main.aspx?etn={_principalReference.LogicalName}&pagetype=entityrecord&id={_principalReference.Id}";
+            Process.Start(url);
+        }
+
+        private void targetLinkLabel_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            var url = ConnectionDetail.WebApplicationUrl + $"main.aspx?etn={_targetReference.LogicalName}&pagetype=entityrecord&id={_targetReference.Id}";
+            Process.Start(url);
+        }
+
+        private void createIssueLinkLabel_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            Process.Start("https://github.com/MarkMpn/MarkMpn.SecurityDebugger/issues/new");
+        }
+
+        void IAboutPlugin.ShowAboutDialog()
+        {
+            Process.Start("https://markcarrington.dev/security-debugger/");
+        }
+
+        string IGitHubPlugin.RepositoryName => "MarkMpn.SecurityDebugger";
+
+        string IGitHubPlugin.UserName => "MarkMpn";
+
+        string IHelpPlugin.HelpUrl => "https://markcarrington.dev/security-debugger/";
     }
 }

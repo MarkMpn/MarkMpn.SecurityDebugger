@@ -120,6 +120,21 @@
   <metadata name="toolStrip.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
     <value>127, 17</value>
   </metadata>
+  <data name="createIssueLinkLabel.Text" xml:space="preserve">
+    <value>The message is not currently recognized as a permissions-related error that this tool can help with. Please either copy &amp; paste or open the full error message, or create an issue on GitHub to help extend this tool to handle this format of error message.</value>
+  </data>
+  <assembly alias="System.Drawing" name="System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" />
+  <data name="toolStripButton1.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+    <value>
+        iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8
+        YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAEpSURBVDhP3ZG/S8NAGIbz96iLOLhndFXQwcFBSsAhN6h/
+        gZu4OoiC7qWOHdRJxMFFEPwxWKu0Tdur+XW5ZHy9O5oj5mLo7AdPDr7c+9yXi1WsNE1RB+c8EixPt5uV
+        bzy/ecFrpwfHcWDbtoYQAt/34z8luWDj6BpzbhOdPsWg7yEMIiVwXbdaIkKbovGcC1jCsT6VfI0CLRgN
+        x6Yky7Ktx/chlvYuYa2eGqwdXmmBXIsSxlhkicfH4m4L5OxOneZNQvTGAVYO2sYEZSilUN8tT+p6vr7t
+        4vhxFCtBGS0QE3QXSBP7F/f4DpkSHLefasMSLRAX0Xh4G2BeSHZObpUgSZLasEQLZInAtpjkM2ZcCaoC
+        ZX4J8pIN+aIqUOa/C2bFEIhfqpqzQ/ED2eDPKLur5xwAAAAASUVORK5CYII=
+</value>
+  </data>
   <metadata name="imageList.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
     <value>17, 17</value>
   </metadata>
@@ -128,7 +143,7 @@
         AAEAAAD/////AQAAAAAAAAAMAgAAAFdTeXN0ZW0uV2luZG93cy5Gb3JtcywgVmVyc2lvbj00LjAuMC4w
         LCBDdWx0dXJlPW5ldXRyYWwsIFB1YmxpY0tleVRva2VuPWI3N2E1YzU2MTkzNGUwODkFAQAAACZTeXN0
         ZW0uV2luZG93cy5Gb3Jtcy5JbWFnZUxpc3RTdHJlYW1lcgEAAAAERGF0YQcCAgAAAAkDAAAADwMAAAAm
-        CgAAAk1TRnQBSQFMAgEBAwEAARABAAEQAQABEAEAARABAAT/AQkBAAj/AUIBTQE2AQQGAAE2AQQCAAEo
+        CgAAAk1TRnQBSQFMAgEBAwEAARgBAAEYAQABEAEAARABAAT/AQkBAAj/AUIBTQE2AQQGAAE2AQQCAAEo
         AwABQAMAARADAAEBAQABCAYAAQQYAAGAAgABgAMAAoABAAGAAwABgAEAAYABAAKAAgADwAEAAcAB3AHA
         AQAB8AHKAaYBAAEzBQABMwEAATMBAAEzAQACMwIAAxYBAAMcAQADIgEAAykBAANVAQADTQEAA0IBAAM5
         AQABgAF8Af8BAAJQAf8BAAGTAQAB1gEAAf8B7AHMAQABxgHWAe8BAAHWAucBAAGQAakBrQIAAf8BMwMA
@@ -173,21 +188,6 @@
         AYcB+QIAAYABAAH4AR8BhwH5AgABgAEBAfgBHwH/AcMCAAGAAQMB+AEfAeMBwwIAAcABPwH4AR8B8AED
         AgAB4AF/AfwBPwH4AQMCAAHwBf8CAAs=
 </value>
-  </data>
-  <assembly alias="System.Drawing" name="System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" />
-  <data name="toolStripButton1.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
-    <value>
-        iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8
-        YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAEoSURBVDhP3ZG/S8NAGIbz96iLOLhndFXQwcFBSsAhN6h/
-        gZu4OoiC7qWOHdRJxMFFEPwxWKu0Tdur+XW5ZHy9O5oj5mLo7AcPB1/ufe7LnVWsNE1RB+c8EixPt5uV
-        bzy/ecFrpwfHcWDbtoYQAt/34z8luWDj6BpzbhOdPsWg7yEMIiVwXbdaIkKbovGcC1jCsT6VfI0CLRgN
-        x6Yky7Ktx/chlvYuYa2eGqwdXmmBXIsSxlhkJUnysbjbAjm7U6d5kxC9cYCVg7YxQRlKKdR/y5O6nq9v
-        uzh+HMVKUEYLxATdBdLE/sU9vkOmBMftp9qwRAvERTQe3gaYF5Kdk1slENLasEQLZInAtuAzZlwJqgJl
-        fgnykg35oSpQ5r8LZsUQiCdVzdmh+AHuR88xuGBvHQAAAABJRU5ErkJggg==
-</value>
-  </data>
-  <data name="linkLabel1.Text" xml:space="preserve">
-    <value>The message is not currently recognized as a permissions-related error that this tool can help with. Please either copy &amp; paste or open the full error message, or create an issue on GitHub to help extend this tool to handle this format of error message.</value>
   </data>
   <metadata name="openFileDialog.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
     <value>232, 17</value>

@@ -62,7 +62,7 @@ namespace MarkMpn.SecurityDebugger
                 // SecLib::AccessCheckEx failed. Returned hr = -2147187962, ObjectID: <guid>, OwnerId: <guid>,  OwnerIdType: <int> and CallingUser: <guid>. ObjectTypeCode: <int>, objectBusinessUnitId: <guid>, AccessRights: <accessrights>
                 // Target: <objectid>,<objectidtype>
                 // Principal: <callinguserid>
-                // Privilege: <accessrights>,<owneridtype>
+                // Privilege: <accessrights>,<objectidtype>
                 // Depth: <objectid>,<callinguserid>
                 new Regex("ObjectID: (?<objectid>[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+), OwnerId: (?<ownerid>[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+),  OwnerIdType: (?<owneridtype>[0-9]+) and CallingUser: (?<callinguser>[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+). ObjectTypeCode: (?<objectidtype>[0-9]+), objectBusinessUnitId: (?<objectbusinessunitid>[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+), AccessRights: (?<accessrights>[a-z]+)", RegexOptions.IgnoreCase),
                 
@@ -78,7 +78,14 @@ namespace MarkMpn.SecurityDebugger
                 // Principal: <userid>
                 // Privilege: <privilegename>
                 // Depth: Basic
-                new Regex("Principal user \\(Id=\\s*(?<callinguser>[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+)(\\s*,\\s*type=(?<usertype>[0-9]+))?(\\s*,\\s*roleCount=[0-9]+)?(\\s*,\\s*privilegeCount=[0-9]+)?(\\s*,\\s*accessMode=[0-9]+)?\\)\\s*,?\\s*is missing (?<privilegename>prv[a-z0-9_]+)\\sprivilege( \\(Id=(?<privilegeid>[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+)\\))?( on OTC=(?<objectidtype>[0-9]+))?( for entity '(?<objectidtypename>[a-z0-9_]+)')?", RegexOptions.IgnoreCase)
+                new Regex("Principal user \\(Id=\\s*(?<callinguser>[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+)(\\s*,\\s*type=(?<usertype>[0-9]+))?(\\s*,\\s*roleCount=[0-9]+)?(\\s*,\\s*privilegeCount=[0-9]+)?(\\s*,\\s*accessMode=[0-9]+)?\\)\\s*,?\\s*is missing (?<privilegename>prv[a-z0-9_]+)\\sprivilege( \\(Id=(?<privilegeid>[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+)\\))?( on OTC=(?<objectidtype>[0-9]+))?( for entity '(?<objectidtypename>[a-z0-9_]+)')?", RegexOptions.IgnoreCase),
+
+                // Principal with id <guid> does not have <accessrights> right(s) for record with id <guid> of entity <entityname>
+                // Target <objectid>,<objectidtype>
+                // Principal: <callinguserid>
+                // Privilege: <accessrights>,<objectidtype>
+                // Depth: <objectid>,<callinguserid>
+                new Regex("Principal with id (?<callinguser>[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+) does not have (?<accessrights>[a-z]+) right\\(s\\) for record with id (?<objectid>[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+) of entity (?<objectidtype>[a-z0-9_]+)", RegexOptions.IgnoreCase)
             };
 
             foreach (var regex in regexes)
@@ -162,7 +169,7 @@ namespace MarkMpn.SecurityDebugger
                                     var link = "";
 
                                     if (_targetReference != null)
-                                        link = _targetReference.Name;
+                                        link = _targetReference.Name ?? "<Unnamed>";
                                     else
                                         prefix += ((EntityMetadata)target).DisplayName.UserLocalizedLabel.Label;
 
@@ -381,7 +388,7 @@ namespace MarkMpn.SecurityDebugger
                     throw new NotSupportedException();
 
                 var priv = metadata.Privileges.Single(p => p.PrivilegeType == privType);
-                return Service.Retrieve("privilege", priv.PrivilegeId, new ColumnSet("accessrights", "canbebasic", "canbelocal", "canbedeep", "canbeglobal"));
+                return Service.Retrieve("privilege", priv.PrivilegeId, new ColumnSet("name", "accessright", "canbebasic", "canbelocal", "canbedeep", "canbeglobal"));
             }
 
             throw new NotSupportedException();

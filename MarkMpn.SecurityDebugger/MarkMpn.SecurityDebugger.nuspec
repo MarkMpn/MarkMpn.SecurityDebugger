@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
+  <metadata>
+    <id>MarkMpn.SecurityDebugger</id>
+    <version>1.0.0</version>
+    <title>Security Debugger</title>
+    <authors>Mark Carrington</authors>
+    <owners>MarkMpn</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <projectUrl>https://markcarrington.dev/security-debugger/</projectUrl>
+    <iconUrl>http://markcarrington.dev/security-debugger/</iconUrl>
+    <description>Analyse permissions errors to identify the problem user and record, and identify possible solutions</description>
+    <summary>Analyse permissions errors to identify the problem user and record, and identify possible solutions</summary>
+    <releaseNotes>First release!</releaseNotes>
+    <copyright>Copyright © 2021 Mark Carrington</copyright>
+    <language>en-GB</language>
+    <tags>XrmToolBox Security Permissions Error Privilege</tags>
+    <dependencies>
+      <dependency id="XrmToolBox" version="1.2020.12.43" />
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="bin\Release\MarkMpn.SecurityDebugger.dll" target="lib\net452\Plugins\MarkMpn.SecurityDebugger.dll" />
+  </files>
+</package>

@@ -359,21 +359,29 @@ namespace MarkMpn.SecurityDebugger
             var owner = Service.Retrieve(ownerRef.LogicalName, ownerRef.Id, new ColumnSet("businessunitid"));
             var buRef = owner.GetAttributeValue<EntityReference>("businessunitid");
 
-            var me = (WhoAmIResponse)Service.Execute(new WhoAmIRequest());
-
-            if (ownerRef.Id == me.UserId)
+            if (ownerRef.Id == principal.Id)
                 return PrivilegeDepth.Basic;
 
-            if (buRef.Id == me.BusinessUnitId)
+            var me = Service.Retrieve(principal.LogicalName, principal.Id, new ColumnSet("businessunitid"));
+            var myBusinessUnitId = me.GetAttributeValue<EntityReference>("businessunitid");
+
+            if (buRef.Id == myBusinessUnitId.Id)
                 return PrivilegeDepth.Local;
 
-            var underQry = new QueryExpression("businessunit");
-            underQry.Criteria.AddCondition("businessunitid", ConditionOperator.Under, me.BusinessUnitId);
-            underQry.Criteria.AddCondition("businessunitid", ConditionOperator.Equal, buRef.Id);
-            var under = Service.RetrieveMultiple(underQry).Entities.Any();
+            // Business Unit doesn't have a hierarchical relationship so we can't do a simple query to see
+            // if the target business unit is under the user's business unit, so recurse up from the target
+            // business unit instead to see if we reach the user's business unit
+            var bu = Service.Retrieve(buRef.LogicalName, buRef.Id, new ColumnSet("parentbusinessunitid"));
+            var parentBuRef = bu.GetAttributeValue<EntityReference>("parentbusinessunitid");
 
-            if (under)
-                return PrivilegeDepth.Deep;
+            while (parentBuRef != null)
+            {
+                if (parentBuRef.Id == myBusinessUnitId.Id)
+                    return PrivilegeDepth.Deep;
+
+                bu = Service.Retrieve(parentBuRef.LogicalName, parentBuRef.Id, new ColumnSet("parentbusinessunitid"));
+                parentBuRef = bu.GetAttributeValue<EntityReference>("parentbusinessunitid");
+            }
 
             return PrivilegeDepth.Global;
         }

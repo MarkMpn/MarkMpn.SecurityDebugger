@@ -718,7 +718,7 @@ namespace MarkMpn.SecurityDebugger
 
         void IAboutPlugin.ShowAboutDialog()
         {
-            Process.Start("https://markcarrington.dev/security-debugger/");
+            Process.Start(((IHelpPlugin)this).HelpUrl);
         }
 
         string IGitHubPlugin.RepositoryName => "MarkMpn.SecurityDebugger";
@@ -726,5 +726,10 @@ namespace MarkMpn.SecurityDebugger
         string IGitHubPlugin.UserName => "MarkMpn";
 
         string IHelpPlugin.HelpUrl => "https://markcarrington.dev/security-debugger/";
+
+        private void aboutToolStripLabel_Click(object sender, EventArgs e)
+        {
+            ((IAboutPlugin)this).ShowAboutDialog();
+        }
     }
 }

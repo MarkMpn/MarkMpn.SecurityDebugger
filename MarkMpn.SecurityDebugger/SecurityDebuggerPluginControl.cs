@@ -319,6 +319,15 @@ namespace MarkMpn.SecurityDebugger
                                 {
                                     errorLabel.Text = ex.Message;
 
+                                    // If this is an ObjectDoesNotExist error, it's likely that the error is from a different instance
+                                    unchecked
+                                    {
+                                        if (ex is FaultException<OrganizationServiceFault> fault && fault.Detail.ErrorCode == (int) 0x80040217)
+                                        {
+                                            errorLabel.Text += "\r\n\r\nAre you connected to the same instance the error message came from?";
+                                        }
+                                    }
+
                                     noMatchPanel.Visible = false;
                                     errorPanel.Visible = true;
                                 });

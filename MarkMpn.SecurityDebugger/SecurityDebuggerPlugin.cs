@@ -19,11 +19,15 @@ namespace MarkMpn.SecurityDebugger
         ExportMetadata("BackgroundColor", "DarkMagenta"),
         ExportMetadata("PrimaryFontColor", "White"),
         ExportMetadata("SecondaryFontColor", "Gray")]
-    public class SecurityDebuggerPlugin : PluginBase
+    public class SecurityDebuggerPlugin : PluginBase, IPayPalPlugin
     {
         public override IXrmToolBoxPluginControl GetControl()
         {
             return new SecurityDebuggerPluginControl();
         }
+
+        string IPayPalPlugin.DonationDescription => "Security Debugger Donation";
+
+        string IPayPalPlugin.EmailAccount => "donate@markcarrington.dev";
     }
 }

@@ -23,7 +23,7 @@ using XrmToolBox.Extensibility.Interfaces;
 
 namespace MarkMpn.SecurityDebugger
 {
-    public partial class SecurityDebuggerPluginControl : PluginControlBase, IGitHubPlugin, IAboutPlugin, IHelpPlugin
+    public partial class SecurityDebuggerPluginControl : PluginControlBase, IGitHubPlugin, IAboutPlugin, IHelpPlugin, IPayPalPlugin
     {
         private EntityReference _principalReference;
         private EntityReference _targetReference;
@@ -41,12 +41,27 @@ namespace MarkMpn.SecurityDebugger
             scintilla1.Styles[1].BackColor = Color.Yellow;
         }
 
+        class Results
+        {
+            public bool HasAccess { get; set; }
+            public string PrincipalTypeDisplayName { get; set; }
+            public string TargetTypeDisplayName { get; set; }
+            public AccessRights AccessRights { get; set; }
+            public object Target { get; set; }
+            public Entity Privilege { get; set; }
+            public PrivilegeDepth PrivilegeDepth { get; set; }
+            public bool IsCurrentUser { get; set; }
+            public List<Resolution> Resolutions { get; set; }
+            public Exception Exception { get; set; }
+        }
+
         private void ParseError()
         {
             noMatchPanel.Visible = true;
             recordPermissionsPanel.Visible = false;
             errorPanel.Visible = false;
             retryPanel.Visible = false;
+            resolutionsListView.Items.Clear();
 
             scintilla1.StartStyling(0);
             scintilla1.SetStyling(scintilla1.TextLength, 0);
@@ -85,7 +100,14 @@ namespace MarkMpn.SecurityDebugger
                 // Principal: <callinguserid>
                 // Privilege: <accessrights>,<objectidtype>
                 // Depth: <objectid>,<callinguserid>
-                new Regex("Principal with id (?<callinguser>[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+) does not have (?<accessrights>[a-z]+) right\\(s\\) for record with id (?<objectid>[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+) of entity (?<objectidtype>[a-z0-9_]+)", RegexOptions.IgnoreCase)
+                new Regex("Principal with id (?<callinguser>[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+) does not have (?<accessrights>[a-z]+) right\\(s\\) for record with id (?<objectid>[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+) of entity (?<objectidtype>[a-z0-9_]+)", RegexOptions.IgnoreCase),
+
+                // RoleService::VerifyCallerPrivileges failed. User: <guid>, UserBU: <guid>, PrivilegeName: <privilegename>, PrivilegeId: <guid>, Depth: <depth>, BusinessUnitId: <guid>, MissingPrivilegeCount: 16
+                // Target: None
+                // Principal: <userid>
+                // Privilege: <privilegename>
+                // Depth: <privilegedepth>
+                new Regex("User: (?<callinguser>[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+), UserBU: ([a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+), PrivilegeName: (?<privilegename>prv[a-z0-9_]+), PrivilegeId: (?<privilegeid>[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+), Depth: (?<privilegedepth>Basic|Local|Deep|Global)", RegexOptions.IgnoreCase),
             };
 
             foreach (var regex in regexes)
@@ -108,15 +130,23 @@ namespace MarkMpn.SecurityDebugger
                         Message = "Extracting Details...",
                         Work = (bw, args) =>
                         {
+                            var result = new Results();
+
                             try
                             {
                                 // Extract the details from the error message
                                 _principalReference = ExtractPrincipal(match, out var principalTypeDisplayName);
                                 var target = ExtractTarget(match, out var targetTypeDisplayName);
-                                var privilege = ExtractPrivilege(match, target);
+                                var privilege = ExtractPrivilege(match, ref target, ref targetTypeDisplayName);
                                 var privilegeDepth = ExtractPrivilegeDepth(match, _principalReference, target);
 
-                                var accessRights = (AccessRights)privilege.GetAttributeValue<int>("accessright");
+                                result.Target = target;
+                                result.PrincipalTypeDisplayName = principalTypeDisplayName;
+                                result.TargetTypeDisplayName = targetTypeDisplayName;
+                                result.Privilege = privilege;
+                                result.PrivilegeDepth = privilegeDepth;
+
+                                result.AccessRights = (AccessRights)privilege.GetAttributeValue<int>("accessright");
                                 _targetReference = target as EntityReference;
                                 var privilegeRef = privilege.ToEntityReference();
                                 privilegeRef.Name = privilege.GetAttributeValue<string>("name");
@@ -124,7 +154,7 @@ namespace MarkMpn.SecurityDebugger
                                 // Check if the problem should still exist
                                 try
                                 {
-                                    if (_targetReference != null && accessRights != AccessRights.None)
+                                    if (_targetReference != null && result.AccessRights != AccessRights.None)
                                     {
                                         var recordAccess = (RetrievePrincipalAccessResponse)Service.Execute(new RetrievePrincipalAccessRequest
                                         {
@@ -132,8 +162,8 @@ namespace MarkMpn.SecurityDebugger
                                             Target = _targetReference
                                         });
 
-                                        if ((recordAccess.AccessRights & accessRights) == accessRights)
-                                            InvokeIfRequired(() => retryPanel.Visible = true);
+                                        if ((recordAccess.AccessRights & result.AccessRights) == result.AccessRights)
+                                            result.HasAccess = true;
                                     }
                                     else
                                     {
@@ -144,7 +174,7 @@ namespace MarkMpn.SecurityDebugger
                                         });
 
                                         if (priv.RolePrivileges.Any())
-                                            InvokeIfRequired(() => retryPanel.Visible = true);
+                                            result.HasAccess = true;
                                     }
                                 }
                                 catch (FaultException<OrganizationServiceFault>)
@@ -152,111 +182,108 @@ namespace MarkMpn.SecurityDebugger
                                     // In case the service doesn't support the RetrieveUserPrivilegeByPrivilegeId message
                                 }
 
-                                // Display the problem details
-                                InvokeIfRequired(() =>
+                                // Check permission is available at the minimum calculated depth. If not, increase the depth
+                                // to the next available value.
+                                if (privilegeDepth == PrivilegeDepth.Basic && !privilege.GetAttributeValue<bool>("canbebasic"))
+                                    privilegeDepth = PrivilegeDepth.Local;
+
+                                if (privilegeDepth == PrivilegeDepth.Local && !privilege.GetAttributeValue<bool>("canbelocal"))
+                                    privilegeDepth = PrivilegeDepth.Deep;
+
+                                if (privilegeDepth == PrivilegeDepth.Deep && !privilege.GetAttributeValue<bool>("canbedeep"))
+                                    privilegeDepth = PrivilegeDepth.Global;
+
+                                switch (privilegeDepth)
                                 {
-                                    var userPrefix = $"The {principalTypeDisplayName} ";
-                                    var userName = _principalReference.Name;
-                                    userLinkLabel.Text = userPrefix + userName;
-                                    userLinkLabel.LinkArea = new LinkArea(userPrefix.Length, userName.Length);
+                                    case PrivilegeDepth.Basic:
+                                        requiredDepthImage.Image = Properties.Resources.Basic;
+                                        break;
 
-                                    if (accessRights == AccessRights.None)
-                                        missingPrivilegeLinkLabel.Text = $"does not have {privilege.GetAttributeValue<string>("name")} permission";
-                                    else
-                                        missingPrivilegeLinkLabel.Text = $"does not have {accessRights.ToString().Replace("Access", "")} permission";
+                                    case PrivilegeDepth.Local:
+                                        requiredDepthImage.Image = Properties.Resources.Local;
+                                        break;
 
-                                    var prefix = $"on the {targetTypeDisplayName} ";
-                                    var link = "";
+                                    case PrivilegeDepth.Deep:
+                                        requiredDepthImage.Image = Properties.Resources.Deep;
+                                        break;
 
-                                    if (_targetReference != null)
-                                        link = _targetReference.Name ?? "<Unnamed>";
-                                    else
-                                        prefix += ((EntityMetadata)target).DisplayName.UserLocalizedLabel.Label;
+                                    case PrivilegeDepth.Global:
+                                        requiredDepthImage.Image = Properties.Resources.Global;
+                                        break;
+                                }
 
-                                    targetLinkLabel.Text = prefix + link;
-                                    targetLinkLabel.LinkArea = new LinkArea(prefix.Length, link.Length);
+                                var whoAmI = (WhoAmIResponse)Service.Execute(new WhoAmIRequest());
+                                if (_principalReference.LogicalName == "systemuser" && _principalReference.Id == whoAmI.UserId)
+                                {
+                                    result.IsCurrentUser = true;
+                                }
+                                else
+                                {
+                                    var resolutions = new List<Resolution>();
 
-                                    // Check permission is available at the minimum calculated depth. If not, increase the depth
-                                    // to the next available value.
-                                    if (privilegeDepth == PrivilegeDepth.Basic && !privilege.GetAttributeValue<bool>("canbebasic"))
-                                        privilegeDepth = PrivilegeDepth.Local;
+                                    // Find roles that include the required permission and suggest to add them to the user
+                                    var depthQuery = Math.Pow(2, (int)privilegeDepth);
 
-                                    if (privilegeDepth == PrivilegeDepth.Local && !privilege.GetAttributeValue<bool>("canbelocal"))
-                                        privilegeDepth = PrivilegeDepth.Deep;
+                                    // Only suggest roles in the correct business unit
+                                    var principal = Service.Retrieve(_principalReference.LogicalName, _principalReference.Id, new ColumnSet("businessunitid"));
+                                    var businessUnitId = principal.GetAttributeValue<EntityReference>("businessunitid").Id;
 
-                                    if (privilegeDepth == PrivilegeDepth.Deep && !privilege.GetAttributeValue<bool>("canbedeep"))
-                                        privilegeDepth = PrivilegeDepth.Global;
-
-                                    requiredPrivilegeLabel.Text = $"To resolve this error, the user needs to be granted the {privilegeRef.Name} privilege to {privilegeDepth} depth";
-
-                                    switch (privilegeDepth)
-                                    {
-                                        case PrivilegeDepth.Basic:
-                                            requiredDepthImage.Image = Properties.Resources.Basic;
-                                            break;
-
-                                        case PrivilegeDepth.Local:
-                                            requiredDepthImage.Image = Properties.Resources.Local;
-                                            break;
-
-                                        case PrivilegeDepth.Deep:
-                                            requiredDepthImage.Image = Properties.Resources.Deep;
-                                            break;
-
-                                        case PrivilegeDepth.Global:
-                                            requiredDepthImage.Image = Properties.Resources.Global;
-                                            break;
-                                    }
-                                });
-
-                                var resolutions = new List<Resolution>();
-
-                                // Find roles that include the required permission and suggest to add them to the user
-                                var depthQuery = 2 ^ (int) privilegeDepth;
-
-                                var sufficientRoleQry = new FetchExpression($@"
+                                    var sufficientRoleQry = new FetchExpression($@"
                                     <fetch xmlns:generator='MarkMpn.SQL4CDS'>
                                         <entity name='role'>
                                             <attribute name='name' />
-                                            <link-entity name='roleprivileges' to='roleid' from='roleid' alias='rp' link-type='inner'>
+                                            <link-entity name='role' from='roleid' to='parentrootroleid'>
+                                                <link-entity name='roleprivileges' to='roleid' from='roleid' alias='rp' link-type='inner'>
+                                                    <filter>
+                                                        <condition attribute='privilegeid' operator='eq' value='{privilege.Id}' />
+                                                        <condition attribute='privilegedepthmask' operator='ge' value='{depthQuery}' />
+                                                    </filter>
+                                                </link-entity>
+                                            </link-entity>
+                                            <link-entity name='{_principalReference.LogicalName}roles' to='roleid' from='roleid' alias='sur' link-type='outer'>
                                                 <filter>
-                                                    <condition attribute='privilegeid' operator='eq' value='{privilege.Id}' />
-                                                    <condition attribute='privilegedepthmask' operator='ge' value='{depthQuery}' />
+                                                    <condition attribute='{_principalReference.LogicalName}id' operator='eq' value='{_principalReference.Id}' />
                                                 </filter>
                                             </link-entity>
+                                            <filter>
+                                                <condition attribute='businessunitid' operator='eq' value='{businessUnitId}' />
+                                                <condition entityname='sur' attribute='roleid' operator='null' />
+                                            </filter>
                                             <order attribute='name' />
                                         </entity>
                                     </fetch>");
-                                var sufficientRoles = Service.RetrieveMultiple(sufficientRoleQry);
+                                    var sufficientRoles = Service.RetrieveMultiple(sufficientRoleQry);
 
-                                foreach (var role in sufficientRoles.Entities)
-                                {
-                                    var roleRef = role.ToEntityReference();
-                                    roleRef.Name = role.GetAttributeValue<string>("name");
-
-                                    var addRole = new AddSecurityRole
+                                    foreach (var role in sufficientRoles.Entities)
                                     {
-                                        UserReference = _principalReference,
-                                        RoleReference = roleRef
-                                    };
+                                        var roleRef = role.ToEntityReference();
+                                        roleRef.Name = role.GetAttributeValue<string>("name");
 
-                                    resolutions.Add(addRole);
-                                }
+                                        var addRole = new AddSecurityRole
+                                        {
+                                            UserReference = _principalReference,
+                                            RoleReference = roleRef
+                                        };
 
-                                // Find roles currently assigned to the user and suggest them to be edited to include the required permission
-                                var existingRoleQry = new FetchExpression($@"
+                                        resolutions.Add(addRole);
+                                    }
+
+                                    // Find roles currently assigned to the user and suggest them to be edited to include the required permission
+                                    var existingRoleQry = new FetchExpression($@"
                                     <fetch xmlns:generator='MarkMpn.SQL4CDS'>
                                         <entity name='role'>
-                                            <attribute name='name' />
-                                            <link-entity name='roleprivileges' to='roleid' from='roleid' alias='rp' link-type='outer'>
-                                                <attribute name='privilegedepthmask' />
-                                                <filter>
-                                                    <condition attribute='privilegeid' operator='eq' value='{privilege.Id}' />
-                                                </filter>
+                                            <attribute name='parentrootroleid' />
+                                            <link-entity name='role' from='roleid' to='parentrootroleid'>
+                                                <link-entity name='roleprivileges' to='roleid' from='roleid' alias='rp' link-type='outer'>
+                                                    <attribute name='privilegedepthmask' />
+                                                    <filter>
+                                                        <condition attribute='privilegeid' operator='eq' value='{privilege.Id}' />
+                                                    </filter>
+                                                </link-entity>
                                             </link-entity>
-                                            <link-entity name='systemuserroles' to='roleid' from='roleid' alias='sur' link-type='inner'>
+                                            <link-entity name='{_principalReference.LogicalName}roles' to='roleid' from='roleid' alias='sur' link-type='inner'>
                                                 <filter>
-                                                    <condition attribute='systemuserid' operator='eq' value='{_principalReference.Id}' />
+                                                    <condition attribute='{_principalReference.LogicalName}id' operator='eq' value='{_principalReference.Id}' />
                                                 </filter>
                                             </link-entity>
                                             <filter type='or'>
@@ -266,71 +293,121 @@ namespace MarkMpn.SecurityDebugger
                                             <order attribute='name' />
                                         </entity>
                                     </fetch>");
-                                var existingRoles = Service.RetrieveMultiple(existingRoleQry);
+                                    var existingRoles = Service.RetrieveMultiple(existingRoleQry);
 
-                                foreach (var role in existingRoles.Entities)
-                                {
-                                    var roleRef = role.ToEntityReference();
-                                    roleRef.Name = role.GetAttributeValue<string>("name");
-                                    var existingDepth = role.GetAttributeValue<AliasedValue>("rp.privilegedepthmask");
-
-                                    var editRole = new EditSecurityRole
+                                    foreach (var role in existingRoles.Entities)
                                     {
-                                        RoleReference = roleRef,
-                                        PrivilegeReference = privilegeRef,
-                                        Depth = privilegeDepth,
-                                        ExistingDepth = existingDepth == null ? (PrivilegeDepth?)null : (PrivilegeDepth) Math.Log((int)existingDepth.Value, 2)
-                                    };
+                                        var roleRef = role.GetAttributeValue<EntityReference>("parentrootroleid");
+                                        var existingDepth = role.GetAttributeValue<AliasedValue>("rp.privilegedepthmask");
 
-                                    resolutions.Add(editRole);
+                                        var editRole = new EditSecurityRole
+                                        {
+                                            RoleReference = roleRef,
+                                            PrivilegeReference = privilegeRef,
+                                            Depth = privilegeDepth,
+                                            ExistingDepth = existingDepth == null ? (PrivilegeDepth?)null : (PrivilegeDepth)Math.Log((int)existingDepth.Value, 2)
+                                        };
+
+                                        resolutions.Add(editRole);
+                                    }
+
+                                    if (_targetReference != null)
+                                    {
+                                        // Suggest sharing the record with the required permission
+                                        var sharing = new ShareRecord
+                                        {
+                                            UserReference = _principalReference,
+                                            TargetReference = _targetReference,
+                                            AccessRights = result.AccessRights
+                                        };
+
+                                        resolutions.Add(sharing);
+                                    }
+
+                                    result.Resolutions = resolutions;
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                result.Exception = ex;
+                            }
+
+                            args.Result = result;
+                        },
+                        PostWorkCallBack = args =>
+                        {
+                            var result = (Results)args.Result;
+
+                            if (result.Exception != null)
+                            {
+                                errorLabel.Text = result.Exception.Message;
+
+                                // If this is an ObjectDoesNotExist error, it's likely that the error is from a different instance
+                                unchecked
+                                {
+                                    if (result.Exception is FaultException<OrganizationServiceFault> fault && fault.Detail.ErrorCode == (int)0x80040217)
+                                    {
+                                        errorLabel.Text += "\r\n\r\nAre you connected to the same instance the error message came from?";
+                                    }
                                 }
 
-                                if (_targetReference != null)
-                                {
-                                    // Suggest sharing the record with the required permission
-                                    var sharing = new ShareRecord
-                                    {
-                                        UserReference = _principalReference,
-                                        TargetReference = _targetReference,
-                                        AccessRights = accessRights
-                                    };
+                                noMatchPanel.Visible = false;
+                                errorPanel.Visible = true;
+                            }
+                            else
+                            {
+                                retryPanel.Visible = result.HasAccess;
 
-                                    resolutions.Add(sharing);
+                                var userPrefix = $"The {result.PrincipalTypeDisplayName} ";
+                                var userName = _principalReference.Name;
+                                userLinkLabel.Text = userPrefix + userName;
+                                userLinkLabel.LinkArea = new LinkArea(userPrefix.Length, userName.Length);
+
+                                if (result.AccessRights == AccessRights.None)
+                                    missingPrivilegeLinkLabel.Text = $"does not have {result.Privilege.GetAttributeValue<string>("name")} permission";
+                                else
+                                    missingPrivilegeLinkLabel.Text = $"does not have {result.AccessRights.ToString().Replace("Access", "")} permission";
+
+                                if (result.Target == null)
+                                {
+                                    targetLinkLabel.Visible = false;
+                                }
+                                else
+                                {
+                                    var prefix = $"on the {result.TargetTypeDisplayName} ";
+                                    var link = "";
+
+                                    if (_targetReference != null)
+                                        link = _targetReference.Name ?? "<Unnamed>";
+                                    else
+                                        prefix += String.Join(", ", ((EntityMetadataCollection)result.Target).Select(m => m.DisplayName.UserLocalizedLabel.Label));
+
+                                    targetLinkLabel.Text = prefix + link;
+                                    targetLinkLabel.LinkArea = new LinkArea(prefix.Length, link.Length);
+                                    targetLinkLabel.Visible = true;
                                 }
 
-                                InvokeIfRequired(() =>
-                                {
-                                    resolutionsListView.Items.Clear();
+                                requiredPrivilegeLabel.Text = $"To resolve this error, the user needs to be granted the {result.Privilege.GetAttributeValue<string>("name")} privilege to {result.PrivilegeDepth} depth";
 
-                                    foreach (var resolution in resolutions)
+                                if (result.IsCurrentUser)
+                                {
+                                    errorLabel.Text = "Because you are the affected user you cannot use this tool to automatically resolve any security problems. Please ask a system administrator to run this tool on your behalf.";
+                                    errorPanel.Visible = true;
+                                }
+                                else
+                                {
+                                    foreach (var resolution in result.Resolutions)
                                     {
                                         var lvi = resolutionsListView.Items.Add(resolution.ToString());
                                         lvi.ImageIndex = resolution.ImageIndex;
                                         lvi.Tag = resolution;
                                     }
 
-                                    noMatchPanel.Visible = false;
-                                    recordPermissionsPanel.Visible = true;
-                                });
-                            }
-                            catch (Exception ex)
-                            {
-                                InvokeIfRequired(() =>
-                                {
-                                    errorLabel.Text = ex.Message;
+                                    resolutionsListView.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
+                                }
 
-                                    // If this is an ObjectDoesNotExist error, it's likely that the error is from a different instance
-                                    unchecked
-                                    {
-                                        if (ex is FaultException<OrganizationServiceFault> fault && fault.Detail.ErrorCode == (int) 0x80040217)
-                                        {
-                                            errorLabel.Text += "\r\n\r\nAre you connected to the same instance the error message came from?";
-                                        }
-                                    }
-
-                                    noMatchPanel.Visible = false;
-                                    errorPanel.Visible = true;
-                                });
+                                noMatchPanel.Visible = false;
+                                recordPermissionsPanel.Visible = true;
                             }
                         }
                     });
@@ -395,14 +472,56 @@ namespace MarkMpn.SecurityDebugger
             return PrivilegeDepth.Global;
         }
 
-        private Entity ExtractPrivilege(Match match, object target)
+        private Entity ExtractPrivilege(Match match, ref object target, ref string targetTypeDisplayName)
         {
             if (match.Groups["privilegename"].Success)
             {
                 var privQry = new QueryByAttribute("privilege");
                 privQry.AddAttributeValue("name", match.Groups["privilegename"].Value);
                 privQry.ColumnSet = new ColumnSet("name", "accessright", "canbebasic", "canbelocal", "canbedeep", "canbeglobal");
-                return Service.RetrieveMultiple(privQry).Entities.Single();
+                var privilege = Service.RetrieveMultiple(privQry).Entities.SingleOrDefault();
+
+                if (privilege == null)
+                    throw new ApplicationException($"Could not find privilege \"{privQry.Values[0]}\"");
+
+                if (target == null && targetTypeDisplayName == null)
+                {
+                    var privOtcQry = new QueryByAttribute("privilegeobjecttypecodes");
+                    privOtcQry.AddAttributeValue("privilegeid", privilege.Id);
+                    privOtcQry.ColumnSet = new ColumnSet("objecttypecode");
+                    var privOtc = Service.RetrieveMultiple(privOtcQry).Entities.FirstOrDefault();
+
+                    if (privOtc != null)
+                    {
+                        var logicalName = privOtc.GetAttributeValue<string>("objecttypecode");
+                        var entityQuery = new RetrieveMetadataChangesRequest
+                        {
+                            Query = new EntityQueryExpression
+                            {
+                                Criteria = new MetadataFilterExpression
+                                {
+                                    Conditions =
+                                    {
+                                        new MetadataConditionExpression(nameof(EntityMetadata.LogicalName), MetadataConditionOperator.Equals, logicalName)
+                                    }
+                                },
+                                Properties = new MetadataPropertiesExpression
+                                {
+                                    PropertyNames =
+                                    {
+                                        nameof(EntityMetadata.DisplayName)
+                                    }
+                                }
+                            }
+                        };
+
+                        var entityResults = (RetrieveMetadataChangesResponse)Service.Execute(entityQuery);
+                        target = entityResults.EntityMetadata;
+                        targetTypeDisplayName = "entity";
+                    }
+                }
+
+                return privilege;
             }
 
             if (match.Groups["accessrights"].Success)
@@ -411,8 +530,8 @@ namespace MarkMpn.SecurityDebugger
 
                 if (target is EntityReference e)
                     targetType = e.LogicalName;
-                else if (target is EntityMetadata m)
-                    targetType = m.LogicalName;
+                else if (target is EntityMetadataCollection m)
+                    targetType = m[0].LogicalName;
                 else
                     throw new NotSupportedException();
 
@@ -518,13 +637,14 @@ namespace MarkMpn.SecurityDebugger
                     }
                 };
                 var entityResults = (RetrieveMetadataChangesResponse)Service.Execute(entityQuery);
-                var metadata = entityResults.EntityMetadata[0];
+                var metadata = entityResults.EntityMetadata;
 
                 targetTypeDisplayName = "entity";
                 return metadata;
             }
 
-            throw new NotSupportedException("Could not find target");
+            targetTypeDisplayName = null;
+            return null;
         }
 
         private EntityReference ExtractPrincipal(Match match, out string principalTypeDisplayName)
@@ -706,7 +826,13 @@ namespace MarkMpn.SecurityDebugger
                 {
                     resolution.Execute(Service);
                 },
-                PostWorkCallBack = result => ParseError()
+                PostWorkCallBack = result =>
+                {
+                    if (result.Error != null)
+                        MessageBox.Show(result.Error.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    else
+                        ParseError();
+                }
             });
         }
 
@@ -748,5 +874,9 @@ namespace MarkMpn.SecurityDebugger
         {
             ((IAboutPlugin)this).ShowAboutDialog();
         }
+
+        string IPayPalPlugin.DonationDescription => "Security Debugger Donation";
+
+        string IPayPalPlugin.EmailAccount => "donate@markcarrington.dev";
     }
 }

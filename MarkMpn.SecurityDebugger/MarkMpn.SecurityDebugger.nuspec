@@ -11,7 +11,8 @@
     <iconUrl>http://markcarrington.dev/security-debugger/</iconUrl>
     <description>Analyse permissions errors to identify the problem user and record, and identify possible solutions</description>
     <summary>Analyse permissions errors to identify the problem user and record, and identify possible solutions</summary>
-    <releaseNotes>First release!</releaseNotes>
+    <releaseNotes>Handle global permissions not related to a specific record
+Fixed multi-business unit issues</releaseNotes>
     <copyright>Copyright © 2021 Mark Carrington</copyright>
     <language>en-GB</language>
     <tags>XrmToolBox Security Permissions Error Privilege</tags>

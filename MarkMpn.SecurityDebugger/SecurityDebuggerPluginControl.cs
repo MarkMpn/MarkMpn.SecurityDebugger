@@ -23,7 +23,7 @@ using XrmToolBox.Extensibility.Interfaces;
 
 namespace MarkMpn.SecurityDebugger
 {
-    public partial class SecurityDebuggerPluginControl : PluginControlBase, IGitHubPlugin, IAboutPlugin, IHelpPlugin
+    public partial class SecurityDebuggerPluginControl : PluginControlBase, IGitHubPlugin, IAboutPlugin, IHelpPlugin, IPayPalPlugin
     {
         private EntityReference _principalReference;
         private EntityReference _targetReference;
@@ -85,7 +85,14 @@ namespace MarkMpn.SecurityDebugger
                 // Principal: <callinguserid>
                 // Privilege: <accessrights>,<objectidtype>
                 // Depth: <objectid>,<callinguserid>
-                new Regex("Principal with id (?<callinguser>[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+) does not have (?<accessrights>[a-z]+) right\\(s\\) for record with id (?<objectid>[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+) of entity (?<objectidtype>[a-z0-9_]+)", RegexOptions.IgnoreCase)
+                new Regex("Principal with id (?<callinguser>[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+) does not have (?<accessrights>[a-z]+) right\\(s\\) for record with id (?<objectid>[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+) of entity (?<objectidtype>[a-z0-9_]+)", RegexOptions.IgnoreCase),
+
+                // RoleService::VerifyCallerPrivileges failed. User: <guid>, UserBU: <guid>, PrivilegeName: <privilegename>, PrivilegeId: <guid>, Depth: <depth>, BusinessUnitId: <guid>, MissingPrivilegeCount: 16
+                // Target: None
+                // Principal: <userid>
+                // Privilege: <privilegename>
+                // Depth: <privilegedepth>
+                new Regex("User: (?<callinguser>[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+), UserBU: ([a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+), PrivilegeName: (?<privilegename>prv[a-z0-9_]+), PrivilegeId: (?<privilegeid>[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+), Depth: (?<privilegedepth>Basic|Local|Deep|Global)", RegexOptions.IgnoreCase),
             };
 
             foreach (var regex in regexes)
@@ -113,7 +120,7 @@ namespace MarkMpn.SecurityDebugger
                                 // Extract the details from the error message
                                 _principalReference = ExtractPrincipal(match, out var principalTypeDisplayName);
                                 var target = ExtractTarget(match, out var targetTypeDisplayName);
-                                var privilege = ExtractPrivilege(match, target);
+                                var privilege = ExtractPrivilege(match, ref target, ref targetTypeDisplayName);
                                 var privilegeDepth = ExtractPrivilegeDepth(match, _principalReference, target);
 
                                 var accessRights = (AccessRights)privilege.GetAttributeValue<int>("accessright");
@@ -165,16 +172,24 @@ namespace MarkMpn.SecurityDebugger
                                     else
                                         missingPrivilegeLinkLabel.Text = $"does not have {accessRights.ToString().Replace("Access", "")} permission";
 
-                                    var prefix = $"on the {targetTypeDisplayName} ";
-                                    var link = "";
-
-                                    if (_targetReference != null)
-                                        link = _targetReference.Name ?? "<Unnamed>";
+                                    if (target == null)
+                                    {
+                                        targetLinkLabel.Visible = false;
+                                    }
                                     else
-                                        prefix += ((EntityMetadata)target).DisplayName.UserLocalizedLabel.Label;
+                                    {
+                                        var prefix = $"on the {targetTypeDisplayName} ";
+                                        var link = "";
 
-                                    targetLinkLabel.Text = prefix + link;
-                                    targetLinkLabel.LinkArea = new LinkArea(prefix.Length, link.Length);
+                                        if (_targetReference != null)
+                                            link = _targetReference.Name ?? "<Unnamed>";
+                                        else
+                                            prefix += String.Join(", ", ((EntityMetadataCollection)target).Select(m => m.DisplayName.UserLocalizedLabel.Label));
+
+                                        targetLinkLabel.Text = prefix + link;
+                                        targetLinkLabel.LinkArea = new LinkArea(prefix.Length, link.Length);
+                                        targetLinkLabel.Visible = true;
+                                    }
 
                                     // Check permission is available at the minimum calculated depth. If not, increase the depth
                                     // to the next available value.
@@ -212,18 +227,33 @@ namespace MarkMpn.SecurityDebugger
                                 var resolutions = new List<Resolution>();
 
                                 // Find roles that include the required permission and suggest to add them to the user
-                                var depthQuery = 2 ^ (int) privilegeDepth;
+                                var depthQuery = Math.Pow(2, (int) privilegeDepth);
+
+                                // Only suggest roles in the correct business unit
+                                var principal = Service.Retrieve(_principalReference.LogicalName, _principalReference.Id, new ColumnSet("businessunitid"));
+                                var businessUnitId = principal.GetAttributeValue<EntityReference>("businessunitid").Id;
 
                                 var sufficientRoleQry = new FetchExpression($@"
                                     <fetch xmlns:generator='MarkMpn.SQL4CDS'>
                                         <entity name='role'>
                                             <attribute name='name' />
-                                            <link-entity name='roleprivileges' to='roleid' from='roleid' alias='rp' link-type='inner'>
+                                            <link-entity name='role' from='roleid' to='parentrootroleid'>
+                                                <link-entity name='roleprivileges' to='roleid' from='roleid' alias='rp' link-type='inner'>
+                                                    <filter>
+                                                        <condition attribute='privilegeid' operator='eq' value='{privilege.Id}' />
+                                                        <condition attribute='privilegedepthmask' operator='ge' value='{depthQuery}' />
+                                                    </filter>
+                                                </link-entity>
+                                            </link-entity>
+                                            <link-entity name='{_principalReference.LogicalName}roles' to='roleid' from='roleid' alias='sur' link-type='outer'>
                                                 <filter>
-                                                    <condition attribute='privilegeid' operator='eq' value='{privilege.Id}' />
-                                                    <condition attribute='privilegedepthmask' operator='ge' value='{depthQuery}' />
+                                                    <condition attribute='{_principalReference.LogicalName}id' operator='eq' value='{_principalReference.Id}' />
                                                 </filter>
                                             </link-entity>
+                                            <filter>
+                                                <condition attribute='businessunitid' operator='eq' value='{businessUnitId}' />
+                                                <condition entityname='sur' attribute='roleid' operator='null' />
+                                            </filter>
                                             <order attribute='name' />
                                         </entity>
                                     </fetch>");
@@ -247,16 +277,18 @@ namespace MarkMpn.SecurityDebugger
                                 var existingRoleQry = new FetchExpression($@"
                                     <fetch xmlns:generator='MarkMpn.SQL4CDS'>
                                         <entity name='role'>
-                                            <attribute name='name' />
-                                            <link-entity name='roleprivileges' to='roleid' from='roleid' alias='rp' link-type='outer'>
-                                                <attribute name='privilegedepthmask' />
-                                                <filter>
-                                                    <condition attribute='privilegeid' operator='eq' value='{privilege.Id}' />
-                                                </filter>
+                                            <attribute name='parentrootroleid' />
+                                            <link-entity name='role' from='roleid' to='parentrootroleid'>
+                                                <link-entity name='roleprivileges' to='roleid' from='roleid' alias='rp' link-type='outer'>
+                                                    <attribute name='privilegedepthmask' />
+                                                    <filter>
+                                                        <condition attribute='privilegeid' operator='eq' value='{privilege.Id}' />
+                                                    </filter>
+                                                </link-entity>
                                             </link-entity>
-                                            <link-entity name='systemuserroles' to='roleid' from='roleid' alias='sur' link-type='inner'>
+                                            <link-entity name='{_principalReference.LogicalName}roles' to='roleid' from='roleid' alias='sur' link-type='inner'>
                                                 <filter>
-                                                    <condition attribute='systemuserid' operator='eq' value='{_principalReference.Id}' />
+                                                    <condition attribute='{_principalReference.LogicalName}id' operator='eq' value='{_principalReference.Id}' />
                                                 </filter>
                                             </link-entity>
                                             <filter type='or'>
@@ -270,8 +302,7 @@ namespace MarkMpn.SecurityDebugger
 
                                 foreach (var role in existingRoles.Entities)
                                 {
-                                    var roleRef = role.ToEntityReference();
-                                    roleRef.Name = role.GetAttributeValue<string>("name");
+                                    var roleRef = role.GetAttributeValue<EntityReference>("parentrootroleid");
                                     var existingDepth = role.GetAttributeValue<AliasedValue>("rp.privilegedepthmask");
 
                                     var editRole = new EditSecurityRole
@@ -309,6 +340,7 @@ namespace MarkMpn.SecurityDebugger
                                         lvi.Tag = resolution;
                                     }
 
+                                    resolutionsListView.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
                                     noMatchPanel.Visible = false;
                                     recordPermissionsPanel.Visible = true;
                                 });
@@ -395,14 +427,56 @@ namespace MarkMpn.SecurityDebugger
             return PrivilegeDepth.Global;
         }
 
-        private Entity ExtractPrivilege(Match match, object target)
+        private Entity ExtractPrivilege(Match match, ref object target, ref string targetTypeDisplayName)
         {
             if (match.Groups["privilegename"].Success)
             {
                 var privQry = new QueryByAttribute("privilege");
                 privQry.AddAttributeValue("name", match.Groups["privilegename"].Value);
                 privQry.ColumnSet = new ColumnSet("name", "accessright", "canbebasic", "canbelocal", "canbedeep", "canbeglobal");
-                return Service.RetrieveMultiple(privQry).Entities.Single();
+                var privilege = Service.RetrieveMultiple(privQry).Entities.SingleOrDefault();
+
+                if (privilege == null)
+                    throw new ApplicationException($"Could not find privilege \"{privQry.Values[0]}\"");
+
+                if (target == null && targetTypeDisplayName == null)
+                {
+                    var privOtcQry = new QueryByAttribute("privilegeobjecttypecodes");
+                    privOtcQry.AddAttributeValue("privilegeid", privilege.Id);
+                    privOtcQry.ColumnSet = new ColumnSet("objecttypecode");
+                    var privOtc = Service.RetrieveMultiple(privOtcQry).Entities.FirstOrDefault();
+
+                    if (privOtc != null)
+                    {
+                        var logicalName = privOtc.GetAttributeValue<string>("objecttypecode");
+                        var entityQuery = new RetrieveMetadataChangesRequest
+                        {
+                            Query = new EntityQueryExpression
+                            {
+                                Criteria = new MetadataFilterExpression
+                                {
+                                    Conditions =
+                                    {
+                                        new MetadataConditionExpression(nameof(EntityMetadata.LogicalName), MetadataConditionOperator.Equals, logicalName)
+                                    }
+                                },
+                                Properties = new MetadataPropertiesExpression
+                                {
+                                    PropertyNames =
+                                    {
+                                        nameof(EntityMetadata.DisplayName)
+                                    }
+                                }
+                            }
+                        };
+
+                        var entityResults = (RetrieveMetadataChangesResponse)Service.Execute(entityQuery);
+                        target = entityResults.EntityMetadata;
+                        targetTypeDisplayName = "entity";
+                    }
+                }
+
+                return privilege;
             }
 
             if (match.Groups["accessrights"].Success)
@@ -411,8 +485,8 @@ namespace MarkMpn.SecurityDebugger
 
                 if (target is EntityReference e)
                     targetType = e.LogicalName;
-                else if (target is EntityMetadata m)
-                    targetType = m.LogicalName;
+                else if (target is EntityMetadataCollection m)
+                    targetType = m[0].LogicalName;
                 else
                     throw new NotSupportedException();
 
@@ -518,13 +592,14 @@ namespace MarkMpn.SecurityDebugger
                     }
                 };
                 var entityResults = (RetrieveMetadataChangesResponse)Service.Execute(entityQuery);
-                var metadata = entityResults.EntityMetadata[0];
+                var metadata = entityResults.EntityMetadata;
 
                 targetTypeDisplayName = "entity";
                 return metadata;
             }
 
-            throw new NotSupportedException("Could not find target");
+            targetTypeDisplayName = null;
+            return null;
         }
 
         private EntityReference ExtractPrincipal(Match match, out string principalTypeDisplayName)
@@ -706,7 +781,13 @@ namespace MarkMpn.SecurityDebugger
                 {
                     resolution.Execute(Service);
                 },
-                PostWorkCallBack = result => ParseError()
+                PostWorkCallBack = result =>
+                {
+                    if (result.Error != null)
+                        MessageBox.Show(result.Error.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    else
+                        ParseError();
+                }
             });
         }
 
@@ -748,5 +829,9 @@ namespace MarkMpn.SecurityDebugger
         {
             ((IAboutPlugin)this).ShowAboutDialog();
         }
+
+        string IPayPalPlugin.DonationDescription => "Security Debugger Donation";
+
+        string IPayPalPlugin.EmailAccount => "donate@markcarrington.dev";
     }
 }

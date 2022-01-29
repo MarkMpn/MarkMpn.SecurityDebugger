@@ -108,6 +108,13 @@ namespace MarkMpn.SecurityDebugger
                 // Privilege: <privilegename>
                 // Depth: <privilegedepth>
                 new Regex("User: (?<callinguser>[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+), UserBU: ([a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+), PrivilegeName: (?<privilegename>prv[a-z0-9_]+), PrivilegeId: (?<privilegeid>[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+), Depth: (?<privilegedepth>Basic|Local|Deep|Global)", RegexOptions.IgnoreCase),
+
+                // SecLib::CrmCheckPrivilege failed. Returned hr = -2147220839 on UserId: <guid> and Privilege: <prvName> in BusinessUnit: <businessunitname> (Id= <businessunitid>)
+                // Target: <privilegename>
+                // Principal: <userid>
+                // Privilege: <privilegename>
+                // Depth: <businessunitid>,<userid>
+                new Regex("UserId: (?<callinguser>[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+) and Privilege: (?<privilegename>prv[a-z0-9+]+) in BusinessUnit: .*? \\(Id= (?<businessunitid>[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+)\\)", RegexOptions.IgnoreCase),
             };
 
             foreach (var regex in regexes)
@@ -429,7 +436,12 @@ namespace MarkMpn.SecurityDebugger
                 return (PrivilegeDepth)Enum.Parse(typeof(PrivilegeDepth), match.Groups["privilegedepth"].Value);
 
             if (!(target is EntityReference entity))
+            {
+                if (principal != null && match.Groups["businessunitid"].Success)
+                    return DepthFromPrincipalAndBusinessUnit(principal, new EntityReference("businessunit", new Guid(match.Groups["businessunitid"].Value)));
+                
                 return PrivilegeDepth.Basic;
+            }
 
             var metadata = ((RetrieveEntityResponse)Service.Execute(new RetrieveEntityRequest
             {
@@ -448,6 +460,11 @@ namespace MarkMpn.SecurityDebugger
             if (ownerRef.Id == principal.Id)
                 return PrivilegeDepth.Basic;
 
+            return DepthFromPrincipalAndBusinessUnit(principal, buRef);
+        }
+
+        private PrivilegeDepth DepthFromPrincipalAndBusinessUnit(EntityReference principal, EntityReference buRef)
+        {
             var me = Service.Retrieve(principal.LogicalName, principal.Id, new ColumnSet("businessunitid"));
             var myBusinessUnitId = me.GetAttributeValue<EntityReference>("businessunitid");
 

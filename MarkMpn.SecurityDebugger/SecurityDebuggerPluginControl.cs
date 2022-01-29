@@ -100,7 +100,7 @@ namespace MarkMpn.SecurityDebugger
                 // Principal: <callinguserid>
                 // Privilege: <accessrights>,<objectidtype>
                 // Depth: <objectid>,<callinguserid>
-                new Regex("Principal with id (?<callinguser>[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+) does not have (?<accessrights>[a-z]+) right\\(s\\) for record with id (?<objectid>[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+) of entity (?<objectidtype>[a-z0-9_]+)", RegexOptions.IgnoreCase),
+                new Regex("Principal with id (?<callinguser>[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+) does not have (?<accessrights>[a-z]+) right\\(s\\) for record with id (?<objectid>[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+) of entity (?<objectidtype>[a-z0-9_]+)(.*\"ObjectBusinessUnitId\":\"(?<businessunitid>[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+)\")?", RegexOptions.IgnoreCase),
 
                 // RoleService::VerifyCallerPrivileges failed. User: <guid>, UserBU: <guid>, PrivilegeName: <privilegename>, PrivilegeId: <guid>, Depth: <depth>, BusinessUnitId: <guid>, MissingPrivilegeCount: 16
                 // Target: None
@@ -611,6 +611,7 @@ namespace MarkMpn.SecurityDebugger
                             PropertyNames =
                             {
                                 nameof(EntityMetadata.LogicalName),
+                                nameof(EntityMetadata.PrimaryIdAttribute),
                                 nameof(EntityMetadata.PrimaryNameAttribute),
                                 nameof(EntityMetadata.DisplayName),
                                 nameof(EntityMetadata.SchemaName)
@@ -622,11 +623,23 @@ namespace MarkMpn.SecurityDebugger
                 var targetMetadata = targetEntityResults.EntityMetadata[0];
 
                 var targetReference = new EntityReference(targetMetadata.LogicalName, new Guid(match.Groups["objectid"].Value));
-                var target = Service.Retrieve(targetReference.LogicalName, targetReference.Id, new ColumnSet(targetMetadata.PrimaryNameAttribute));
-                targetReference.Name = target.GetAttributeValue<string>(targetMetadata.PrimaryNameAttribute);
+                var qry = new QueryByAttribute(targetReference.LogicalName);
+                qry.AddAttributeValue(targetMetadata.PrimaryIdAttribute, targetReference.Id);
+                qry.ColumnSet = new ColumnSet(targetMetadata.PrimaryNameAttribute);
+                var results = Service.RetrieveMultiple(qry);
 
-                targetTypeDisplayName = targetMetadata.DisplayName.UserLocalizedLabel.Label;
-                return targetReference;
+                if (results.Entities.Count == 1)
+                {
+                    var target = results.Entities[0];
+                    targetReference.Name = target.GetAttributeValue<string>(targetMetadata.PrimaryNameAttribute);
+                    targetTypeDisplayName = targetMetadata.DisplayName.UserLocalizedLabel.Label;
+                    return targetReference;
+                }
+                else
+                {
+                    targetTypeDisplayName = "entity";
+                    return targetEntityResults.EntityMetadata;
+                }
             }
             
             if (match.Groups["objectidtypename"].Success)

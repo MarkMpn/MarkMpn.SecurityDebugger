@@ -103,7 +103,7 @@ namespace MarkMpn.SecurityDebugger
                 // Principal: <userid>
                 // Privilege: <privilegename>
                 // Depth: Basic
-                new Regex("Principal user \\(Id=\\s*(?<callinguser>[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+)(\\s*,\\s*type=(?<usertype>[0-9]+))?(\\s*,\\s*roleCount=[0-9]+)?(\\s*,\\s*privilegeCount=[0-9]+)?(\\s*,\\s*accessMode=[0-9]+)?\\)\\s*,?\\s*is missing (?<privilegename>prv[a-z0-9_]+)\\sprivilege( \\(Id=(?<privilegeid>[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+)\\))?( on OTC=(?<objectidtype>[0-9]+))?( for entity '(?<objectidtypename>[a-z0-9_]+)')?", RegexOptions.IgnoreCase),
+                new Regex("Principal user \\(Id=\\s*(?<callinguser>[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+)(\\s*,\\s*type=(?<usertype>[0-9]+))?(\\s*,\\s*roleCount=[0-9]+)?(\\s*,\\s*privilegeCount=[0-9]+)?(\\s*,\\s*accessMode=([0-9]+|'[0-9]+[^']+'))?[^)]*\\)\\s*,?\\s*is missing (?<privilegename>prv[a-z0-9_]+)\\sprivilege( \\(Id=(?<privilegeid>[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+)\\))?( on OTC=(?<objectidtype>[0-9]+))?( for entity '(?<objectidtypename>[a-z0-9_]+)')?", RegexOptions.IgnoreCase),
 
                 // Principal with id <guid> does not have <accessrights> right(s) for record with id <guid> of entity <entityname>
                 // Target <objectid>,<objectidtype>
